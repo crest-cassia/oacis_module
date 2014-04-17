@@ -1,7 +1,7 @@
 require 'json'
 require 'matrix'
-require_relative '../../OACIS_module.rb'
-require_relative '../../OACIS_module_data.rb'
+require_relative '../../../OACIS_module.rb'
+require_relative '../../../OACIS_module_data.rb'
 
 def gaussian(r, mu, sigma)
     z = Math.sqrt( -2.0*Math.log( r.rand() )) * Math.sin( 2.0*Math::PI*r.rand() )
