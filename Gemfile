@@ -1,6 +1,6 @@
 # load oacis Gemfile
 require 'pathname'
-oacis_gemfile = Pathname("#{ENV["OACIS_HOME"]}/Gemfile")
+oacis_gemfile = Pathname.new("#{ENV["OACIS_HOME"]}/Gemfile")
 puts "Loading #{file} ..." if $DEBUG # `ruby -d` or `bundle -v`
 instance_eval File.read(oacis_gemfile)
 
