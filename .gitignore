@@ -1,0 +1,9 @@
+# bundler state
+/.bundle
+/vendor/bundle/
+/vendor/ruby/
+
+# vim artifacts
+**.swp
+*~
+
