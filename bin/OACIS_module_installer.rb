@@ -1,3 +1,6 @@
+#!/usr/bin/env ruby
+
+require "#{ENV["OACIS_HOME"]}/config/environment"
 require 'pp'
 require 'json'
 require 'readline'

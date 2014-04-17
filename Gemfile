@@ -1,13 +1,17 @@
+# load oacis Gemfile
+require 'pathname'
+oacis_gemfile = Pathname("#{ENV["OACIS_HOME"]}/Gemfile")
+puts "Loading #{file} ..." if $DEBUG # `ruby -d` or `bundle -v`
+instance_eval File.read(oacis_gemfile)
+
+# Load module's Gemfiles
+Dir.glob File.expand_path("plugins/*/Gemfile", __FILE__) do |file|
+  puts "Loading #{file} ..." if $DEBUG # `ruby -d` or `bundle -v`
+  instance_eval File.read(file)
+end
+
+# define oacid-module gems
 source 'https://rubygems.org'
-
-# common gem
-gem 'gnuplot' # for lib/optimzier
-
-# for lib/optimzier
-gem 'k_means' # for lib/optimzier
-
-# for lib/design_of_experiment
-# add gems
 
 # utility tool
 gem 'rspec'

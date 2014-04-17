@@ -1,0 +1,28 @@
+#!/usr/bin/env ruby
+require 'pathname'
+
+def puts_ok
+  puts "  [\e[32mOK\e[0m]"
+end
+
+def puts_error
+  puts "  [\e[31mError\e[0m]"
+end
+
+def verify_oacis_home
+  print "checking oacis home ...        "
+  v = ENV["OACIS_HOME"]
+  if v and File.exist?(Pathname(v).join("config/environment.rb"))
+    puts_ok
+    return true
+  else
+    puts_error
+    puts "\tOACIS_HOME is not correct, but is #{v}"
+    return false
+  end
+end
+
+if verify_oacis_home
+  puts "\e[32mAll the environment checks have passed!\e[0m"
+end
+
