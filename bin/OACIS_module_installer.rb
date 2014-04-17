@@ -108,7 +108,7 @@ class ModuleSetting
     opt = Simulator.new
     opt.name = @name
     opt.parameter_definitions = opt_parameter_definitions
-    opt.command = "OACIS_HOME=#{ENV["OACIS_HOME"]} BUNDLE_GEMFILE=#{Pathname.new(__FILE__).dirname.join("../Gemfile").expand_path} ruby #{@data["_module_runner_path"]}"
+    opt.command = "OACIS_HOME=#{ENV["OACIS_HOME"]} ruby #{@data["_module_runner_path"]}"
     opt.support_input_json = true
     opt.support_mpi = false
     opt.support_omp = false
@@ -358,9 +358,15 @@ end
 def create_runner(module_path, module_runner_path)
   io = File.open(module_runner_path, "w")
   str=<<EOS
-require 'json'
+#!/usr/bin/env ruby
+
+ENV['BUNDLE_GEMFILE'] = "#{Pathname.new(__FILE__).dirname.join("../Gemfile").expand_path}"
+require 'bundler/setup'
 require "#{ENV["OACIS_HOME"]}/config/environment"
+
 require '#{module_path.expand_path}'
+
+require 'json'
 
 def load_input_data
   if File.exist?("_input.json")
