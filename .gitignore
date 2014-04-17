@@ -7,3 +7,7 @@
 **.swp
 *~
 
+# plugins
+/plugins/**/.bundle
+/plugins/**/vendor/bundle/
+/plugins/**/vendor/ruby/
