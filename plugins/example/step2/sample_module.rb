@@ -1,6 +1,6 @@
 require 'json'
-require_relative '../../OACIS_module.rb'
-require_relative '../../OACIS_module_data.rb'
+require_relative '../../../lib/OACIS_module.rb'
+require_relative '../../../lib/OACIS_module_data.rb'
 
 class SampleModule < OacisModule
 
