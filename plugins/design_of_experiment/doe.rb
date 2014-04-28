@@ -4,7 +4,7 @@ require_relative '../../lib/OACIS_module_data.rb'
 require_relative 'mean_test'
 require_relative 'f_test'
 require_relative 'orthogonal_array'
-require_relative 'doe_result_controller'
+require_relative './controller/doe_result_controller'
 
 class Doe < OacisModule
 
