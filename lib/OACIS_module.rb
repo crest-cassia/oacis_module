@@ -15,11 +15,12 @@ class OacisModule
 
   def create_or_restore_module_data
     module_data.data["_input_data"]=@input_data
-    module_data.data["_status"]={}
     if File.exists?("_output.json")
-      module_data.set_data(JSON.load(File.open("_output.json")))
+      module_data.set_data(JSON.load(File.open("_output.json")).merge(module_data.data))
+      raise "_output.json mast have \"_status\":{\"iteration\":\#}" unless module_data.data.try(:fetch, "_status").try(:fetch, "iteration")
       @num_iterations = module_data.data["_status"]["iteration"]
     else
+      module_data.data["_status"] = {}
       module_data.data["_status"]["iteration"] = 0
       @num_iterations = 0
     end
