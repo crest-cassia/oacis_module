@@ -4,7 +4,8 @@ require_relative '../../lib/OACIS_module_data.rb'
 require_relative 'mean_test'
 require_relative 'f_test'
 require_relative 'orthogonal_array'
-require_relative './controller/doe_result_controller'
+require_relative './controllers/doe_result_controller'
+require_relative './controllers/orthogonal_controller'
 
 class Doe < OacisModule
 
@@ -26,6 +27,15 @@ class Doe < OacisModule
     super(input_data)
 
     @doe_result_controller = DOEResultController.new
+    @orthogonal_controller = OrthogonalController.new
+    test_rows = [ {"beta" => {"0" => 0.5}, "H" => {"0" => -0.1}},
+                  {"beta" => {"0" => 0.5}, "H" => {"1" => 0.0}},
+                  {"beta" => {"1" => 0.6}, "H" => {"0" => -0.1}},
+                  {"beta" => {"1" => 0.6}, "H" => {"1" => 0.0}}
+                ]
+    @orthogonal_controller.create(test_rows[0])
+binding.pry
+    @orthogonal_controller
     @total_ps_block_count = 0
     @param_names = []
     @step_size = {}

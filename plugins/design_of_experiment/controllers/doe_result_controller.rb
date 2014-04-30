@@ -1,10 +1,10 @@
-require_relative '../model/doe_result'
+require_relative '../models/doe_result'
 
 class DOEResultController #< ApplicationController
 
 	def create(parameter_set_block, result_block)
 		Mongoid::sessions.clear
-		Mongoid::Config.load!('../doe_rdevelop.yml')
+		Mongoid::Config.load!('../doe_develop.yml')
 
 		DOEResult.create(
 			module_name: "doe",

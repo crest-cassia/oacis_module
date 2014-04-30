@@ -1,21 +1,21 @@
-require_relative '../model/orthogonal'
+require_relative '../models/orthogonal'
 
 class OrthogonalController #< ApplicationController
 
-	def create(corresponds)
+	def create(row)
 		login
 
 		Orthogonal.create(
-  		corresponds: corresponds
+  		row: row
 		)
 
 		leave
 	end
 
-	def update(corresponds)
+	def update(row)
 		login
 		Orthogonal.update(
-			
+			row: row
 		)
 		leave
 	end
@@ -31,8 +31,9 @@ class OrthogonalController #< ApplicationController
 
   private
   def login
+binding.pry
   	Mongoid::sessions.clear
-		Mongoid::Config.load!('../doe_rdevelop.yml')
+		Mongoid::Config.load!('./doe_develop.yml')
   end
 
   def leave
