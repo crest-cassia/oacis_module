@@ -28,14 +28,16 @@ class Doe < OacisModule
 
     @doe_result_controller = DOEResultController.new
     @orthogonal_controller = OrthogonalController.new
-    test_rows = [ {"beta" => {"0" => 0.5}, "H" => {"0" => -0.1}},
-                  {"beta" => {"0" => 0.5}, "H" => {"1" => 0.0}},
-                  {"beta" => {"1" => 0.6}, "H" => {"0" => -0.1}},
-                  {"beta" => {"1" => 0.6}, "H" => {"1" => 0.0}}
-                ]
-    @orthogonal_controller.create(test_rows[0])
-binding.pry
-    @orthogonal_controller
+    # test_rows = [ {"beta" => {"bit" => "0", "value" => 0.5}, "H" => {"bit" => "0", "value" => -0.1}},
+    #               {"beta" => {"bit" => "0", "value" => 0.5}, "H" => {"bit" => "1", "value" => 0.0}},
+    #               {"beta" => {"bit" => "1", "value" => 0.6}, "H" => {"bit" => "0", "value" => -0.1}},
+    #               {"beta" => {"bit" => "1", "value" => 0.6}, "H" => {"bit" => "1", "value" => 0.0}}
+    #             ]
+    # test_rows.each do |row|
+    #   @orthogonal_controller.create(row)  
+    # end
+    # @orthogonal_controller.update("beta", "0")
+
     @total_ps_block_count = 0
     @param_names = []
     @step_size = {}

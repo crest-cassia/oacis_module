@@ -4,19 +4,20 @@ class OrthogonalController #< ApplicationController
 
 	def create(row)
 		login
-
-		Orthogonal.create(
-  		row: row
-		)
-
+		Orthogonal.create(row: row)
 		leave
 	end
 
-	def update(row)
+	def update(name, bit)
 		login
-		Orthogonal.update(
-			row: row
-		)
+		orthogonal_rows = Orthogonal.where("row.#{name}.bit" => bit)
+		if !orthogonal_rows.nil?
+			orthogonal_rows.each do |orthogonal_row|
+				tmp = orthogonal_row.row
+				tmp["#{name}"]["bit"] = "0#{bit}"
+				orthogonal_row.update_attributes!(row: tmp)
+			end
+		end
 		leave
 	end
 
@@ -31,7 +32,6 @@ class OrthogonalController #< ApplicationController
 
   private
   def login
-binding.pry
   	Mongoid::sessions.clear
 		Mongoid::Config.load!('./doe_develop.yml')
   end
@@ -39,6 +39,12 @@ binding.pry
   def leave
   	Mongoid::sessions.clear
 		Mongoid::Config.load!(File.join(Rails.root, 'config/mongoid.yml'))
+  end
+
+  def find_correspond(condition)
+  	# condition = {name => "bit string"}
+
+
   end
 
 end

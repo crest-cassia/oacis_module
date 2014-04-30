@@ -19,7 +19,7 @@ class Orthogonal
   end
 
   #
-  def self.find_orthogonal_rows    
+  def self.find_orthogonal_rows
   end
 
   
