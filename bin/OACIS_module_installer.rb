@@ -461,17 +461,21 @@ class OacisModuleInstaller < Thor
 
   private
   def build_module(options)
+    begin
     @module_path = Pathname(options[:file])
     raise "No such file #{@module_path}" unless File.exist?(@module_path)
     set_target_module(@module_path)
     @module_runner_path = @module_path.dirname.join(@module_path.basename.sub(/.rb/,"_runner.rb")).expand_path(".")
     selector = Selector.new([SimulatorSelect.new, ModuleSetting.new],{"_target_module"=>target_module, "_module_runner_path"=>@module_runner_path})
     selector.run
+    rescue => ex
+      puts ex.message
+    ensure
+      TermColor.reset
+    end
     return selector.data_cash
   end
 end
 
 OacisModuleInstaller.start(ARGV)
-
-TermColor.reset
 
