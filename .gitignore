@@ -3,6 +3,10 @@
 /vendor/bundle/
 /vendor/ruby/
 
+# various artifacts
+/coverage.data
+/coverage/
+
 # vim artifacts
 **.swp
 *~
