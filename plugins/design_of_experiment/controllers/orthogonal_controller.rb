@@ -3,13 +3,13 @@ require_relative '../models/orthogonal'
 class OrthogonalController #< ApplicationController
 
 	def create(row)
-		login
+		logon_doe_DB
 		Orthogonal.create(row: row)
-		leave
+		leave_doe_DB
 	end
 
 	def update(name, bit)
-		login
+		logon_doe_DB
 		orthogonal_rows = Orthogonal.where("row.#{name}.bit" => bit)
 		if !orthogonal_rows.nil?
 			orthogonal_rows.each do |orthogonal_row|
@@ -18,7 +18,7 @@ class OrthogonalController #< ApplicationController
 				orthogonal_row.update_attributes!(row: tmp)
 			end
 		end
-		leave
+		leave_doe_DB
 	end
 
 	def destroy
@@ -31,12 +31,12 @@ class OrthogonalController #< ApplicationController
   end
 
   private
-  def login
+  def logon_doe_DB
   	Mongoid::sessions.clear
 		Mongoid::Config.load!('./doe_develop.yml')
   end
 
-  def leave
+  def leave_doe_DB
   	Mongoid::sessions.clear
 		Mongoid::Config.load!(File.join(Rails.root, 'config/mongoid.yml'))
   end

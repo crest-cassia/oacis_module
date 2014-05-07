@@ -66,7 +66,8 @@ class Doe < OacisModule
     #             direction: "inside"
     #          }
     ps_block = {}
-    ps_block[:keys] = managed_parameters_table.map {|mtb| mtb["key"]}
+    # ps_block[:keys] = managed_parameters_table.map {|mtb| mtb["key"]}
+    ps_block[:keys] = module_data.data["_input_data"]["search_parameter_ranges"].map {|name, ranges| name}
     ps_block[:ps] = []
     parameter_values.each_with_index do |ps_v, index|
       ps_block[:ps] << {v: ps_v, result: nil}
@@ -110,7 +111,8 @@ class Doe < OacisModule
         parameter_value = range[ row[idx].to_i ]
         @parameter_hash[name] = parameter_value
       end
-      parameter_values << managed_parameters_table.map {|mpt| @parameter_hash[mpt["key"]]}
+      # parameter_values << managed_parameters_table.map {|mpt| @parameter_hash[mpt["key"]]}
+      parameter_values << module_data.data["_input_data"]["search_parameter_ranges"].map {|name, ranges| @parameter_hash[name]}
     end
 
     parameter_values

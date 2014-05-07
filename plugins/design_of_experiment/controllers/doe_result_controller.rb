@@ -3,8 +3,7 @@ require_relative '../models/doe_result'
 class DOEResultController #< ApplicationController
 
 	def create(parameter_set_block, result_block)
-		Mongoid::sessions.clear
-		Mongoid::Config.load!('../doe_develop.yml')
+		logon_doe_DB
 
 		DOEResult.create(
 			module_name: "doe",
@@ -12,8 +11,7 @@ class DOEResultController #< ApplicationController
   		results: result_block
 		)
 
-		Mongoid::sessions.clear
-		Mongoid::Config.load!(File.join(Rails.root, 'config/mongoid.yml'))
+		leave_doe_DB
 	end
 
 	def destroy
@@ -23,5 +21,16 @@ class DOEResultController #< ApplicationController
   end
 
   def show
-  end  
+  end
+
+  private
+  def logon_doe_DB
+  	Mongoid::sessions.clear
+		Mongoid::Config.load!('./doe_develop.yml')
+  end
+
+  def leave_doe_DB
+  	Mongoid::sessions.clear
+		Mongoid::Config.load!(File.join(Rails.root, 'config/mongoid.yml'))
+  end
 end
