@@ -3,7 +3,7 @@ require_relative '../../lib/OACIS_module.rb'
 require_relative '../../lib/OACIS_module_data.rb'
 require_relative 'mean_test'
 require_relative 'f_test'
-require_relative 'orthogonal_array'
+require_relative 'orthogonal_table'
 require_relative './controllers/doe_result_controller'
 require_relative './controllers/orthogonal_controller'
 
@@ -66,7 +66,6 @@ class Doe < OacisModule
     #             direction: "inside"
     #          }
     ps_block = {}
-    # ps_block[:keys] = managed_parameters_table.map {|mtb| mtb["key"]}
     ps_block[:keys] = module_data.data["_input_data"]["search_parameter_ranges"].map {|name, ranges| name}
     ps_block[:ps] = []
     parameter_values.each_with_index do |ps_v, index|
@@ -102,16 +101,16 @@ class Doe < OacisModule
     oa_param = @param_names.map do |name|
       {name: name, paramDefs: [0, 1]}
     end
-    @orthogonal_array = OrthogonalArray.new(oa_param)
+    # @orthogonal_array = OrthogonalArray.new(oa_param)
+    table = OrthogonalTable.generation_orthogonal_table(oa_param)
 
-    @orthogonal_array.table.transpose.each do |row|
+    table.transpose.each do |row|
       @parameter_hash = {}
       @param_names.each_with_index do |name, idx|
         range = range_hash[name]
         parameter_value = range[ row[idx].to_i ]
         @parameter_hash[name] = parameter_value
       end
-      # parameter_values << managed_parameters_table.map {|mpt| @parameter_hash[mpt["key"]]}
       parameter_values << module_data.data["_input_data"]["search_parameter_ranges"].map {|name, ranges| @parameter_hash[name]}
     end
 
