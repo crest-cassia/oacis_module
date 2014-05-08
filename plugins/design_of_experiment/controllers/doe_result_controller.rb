@@ -2,13 +2,13 @@ require_relative '../models/doe_result'
 
 class DOEResultController #< ApplicationController
 
-	def create(parameter_set_block, result_block)
+	def create(ps_block_with_id_set, result_block)
 		logon_doe_DB
 
 		DOEResult.create(
-			module_name: "doe",
-  		block: parameter_set_block,
-  		results: result_block
+      module_name: "doe",
+      block: ps_block_with_id_set,
+      results: result_block
 		)
 
 		leave_doe_DB
@@ -17,7 +17,23 @@ class DOEResultController #< ApplicationController
 	def destroy
   end
 
-  def duplicate
+  def duplicate(check_block)
+    logon_doe_DB
+
+    v_set = []
+    check_block[:ps].each do |ps|
+      parameter_set = {}
+      ps[:v].each_with_index do |value, index|
+        parameter_set[check_block[:keys][index]] = value
+      end
+      v_set << parameter_set
+    end
+    query = {"block.v_set"=> v_set}
+    ret = DOEResult.where(query).count
+
+    leave_doe_DB
+
+    ret > 0
   end
 
   def show

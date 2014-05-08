@@ -19,17 +19,17 @@ class ParameterSetGeneration
   #          }
 
   def initialize(module_data, step_size)
-  	@module_data = module_data
-  	@step_size = step_size
+    @module_input_data = module_data.data["_input_data"]
+    @step_size = step_size
   end
 
   # 
   def get_initial_ps_block
-  	range_hash = @module_data.data["_input_data"]["search_parameter_ranges"]
+    range_hash = @module_input_data["search_parameter_ranges"]
     parameter_values = get_parameter_values_from_range_hash(range_hash)
 
   	ps_block = {}
-    ps_block[:keys] = @module_data.data["_input_data"]["search_parameter_ranges"].map {|name, ranges| name}
+    ps_block[:keys] = @module_input_data["search_parameter_ranges"].map {|name, ranges| name}
     ps_block[:ps] = []
     parameter_values.each_with_index do |ps_v, index|
       ps_block[:ps] << {v: ps_v, result: nil}
@@ -44,7 +44,7 @@ class ParameterSetGeneration
   	ps_blocks = []
 		# => inside 
     mean_distances.each_with_index do |mean_distance, index|
-      if mean_distance > @module_data.data["_input_data"]["distance_threshold"]
+      if mean_distance > @module_input_data["distance_threshold"]
         v_values = ps_block[:ps].map {|ps| ps[:v][index] }
         range = [v_values.min, v_values.max]
         one_third = range[0]*2 / 3 + range[1]   /3
@@ -102,7 +102,7 @@ class ParameterSetGeneration
   end
 
   # 
-  def ps_block_to_parameter_set_block(ps_block)
+  def ps_block_with_id_set(ps_block)
     # parameter_set_block =
     #   { :id_set => [012345, 98765, 24680, .... ]
     #     :v_set => [ {"beta" => 0.2, "H" => 0.4},
@@ -112,7 +112,7 @@ class ParameterSetGeneration
     #               ]
     #   }
     #
-    parameter_set_block = {:id_set => [], :v_set => [] }
+    with_id_set = {:id_set => [], :v_set => [] }
     ps_block[:ps].each do |ps|
       parameter_set = {}
       ps[:v].each_with_index do |value, index|
@@ -120,10 +120,10 @@ class ParameterSetGeneration
       end
       query = {}
       parameter_set.each{|k,v| query["v.#{k}"] = v }
-      parameter_set_block[:id_set] << ParameterSet.where(query).first._id
-      parameter_set_block[:v_set] << parameter_set
+      with_id_set[:id_set] << ParameterSet.where(query).first._id
+      with_id_set[:v_set] << parameter_set
     end
-    parameter_set_block
+    with_id_set
   end
 
 
@@ -142,7 +142,7 @@ class ParameterSetGeneration
   def get_parameter_values_from_range_hash(range_hash)
 
     parameter_values = []
-    oa_param = @module_data.data["_input_data"]["search_parameter_ranges"].map{|name, range|
+    oa_param = @module_input_data["search_parameter_ranges"].map{|name, range|
     	{name: name, paramDefs: [0, 1]}
     }
 
@@ -155,7 +155,7 @@ class ParameterSetGeneration
         parameter_value = range[ row[idx].to_i ]
         parameter_hash[param[:name]] = parameter_value
       end
-      parameter_values << @module_data.data["_input_data"]["search_parameter_ranges"].map {|name, ranges| parameter_hash[name] }
+      parameter_values << @module_input_data["search_parameter_ranges"].map {|name, ranges| parameter_hash[name] }
     end
 
     parameter_values

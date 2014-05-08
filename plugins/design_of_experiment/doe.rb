@@ -79,12 +79,12 @@ class Doe < OacisModule
     @running_ps_block_list.each do |ps_block|
       mean_distances = MeanTest.mean_distances(ps_block)
 
-      parameter_set_block = @ps_generation.ps_block_to_parameter_set_block(ps_block)
+      ps_block_with_id_set = @ps_generation.ps_block_with_id_set(ps_block)
       result_block = ps_block[:keys].each_with_index.map {|key, index| 
         {key => mean_distances[index]}
       }
 
-      @doe_result_controller.create(parameter_set_block, result_block)
+      @doe_result_controller.create(ps_block_with_id_set, result_block)
       
       @ps_generation.new_ps_blocks(ps_block, mean_distances).each do |new_ps_block|
         @ps_block_list << new_ps_block if !is_duplicate(new_ps_block)
@@ -121,6 +121,8 @@ class Doe < OacisModule
       end
       return dup if dup
     end
+    dup = @doe_result_controller.duplicate(check_block)
+
     return dup
   end
 end
