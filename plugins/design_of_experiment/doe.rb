@@ -31,8 +31,8 @@ class Doe < OacisModule
 
     @total_ps_block_count = 0
     @param_names = []
-    step_size = {}
 
+    step_size = {}
     module_data.data["_input_data"]["search_parameter_ranges"].each do |key, range|
       @param_names.push(key)
       step_size[key] = range.max - range.min
@@ -41,34 +41,8 @@ class Doe < OacisModule
 
     @ps_generation = ParameterSetGeneration.new(module_data, step_size)
 
-
-    
-    # range_hash = module_data.data["_input_data"]["search_parameter_ranges"]
-
-    # parameter_values = get_parameter_values_from_range_hash(range_hash)
-
-    #ps_block = {
-    #             keys: ["beta", "H"],
-    #             ps: [
-    #                   {v: [0.2, -1.0], result: [-0.483285, -0.484342, -0.483428]},
-    #                   ...
-    #                 ],
-    #             priority: 5.0,
-    #             direction: "inside"
-    #          }
-
-    # ps_block = {}
-    # ps_block[:keys] = module_data.data["_input_data"]["search_parameter_ranges"].map {|name, ranges| name}
-    # ps_block[:ps] = []
-    # parameter_values.each_with_index do |ps_v, index|
-    #   ps_block[:ps] << {v: ps_v, result: nil}
-    # end
-    # ps_block[:priority] = 1.0
-    # ps_block[:direction] = "outside"
     @ps_block_list = []
-    # @ps_block_list << ps_block
     @ps_block_list << @ps_generation.get_initial_ps_block
-
   end
 
   private
@@ -87,27 +61,6 @@ class Doe < OacisModule
     end
 
     super
-  end
-
-  def get_parameter_values_from_range_hash(range_hash)
-
-    parameter_values = []
-    oa_param = @param_names.map do |name|
-      {name: name, paramDefs: [0, 1]} # number of level is '2'
-    end
-
-    table = OrthogonalTable.generation_orthogonal_table(oa_param)
-    table.transpose.each do |row|
-      @parameter_hash = {}
-      @param_names.each_with_index do |name, idx|
-        range = range_hash[name]
-        parameter_value = range[ row[idx].to_i ]
-        @parameter_hash[name] = parameter_value
-      end
-      parameter_values << module_data.data["_input_data"]["search_parameter_ranges"].map {|name, ranges| @parameter_hash[name]}
-    end
-
-    parameter_values
   end
 
   #override
