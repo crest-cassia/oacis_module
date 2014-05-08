@@ -108,13 +108,19 @@ class Doe < OacisModule
   end
 
   def is_duplicate(check_block)
-
-    return false if @ps_block_list.empty?
+    dup = false
+    return dup if @ps_block_list.empty?
     @ps_block_list.each do |ps_block|
+      dup = true
       ps_block[:ps].each do |values|
-        return false if !check_block[:ps].include?(values)
+        if check_block[:ps].include?(values)
+          dup &= true
+        else
+          dup &= false
+        end
       end
+      return dup if dup
     end
-    true
+    return dup
   end
 end
