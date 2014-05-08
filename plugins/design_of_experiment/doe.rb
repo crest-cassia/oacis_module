@@ -4,6 +4,7 @@ require_relative '../../lib/OACIS_module_data.rb'
 require_relative 'mean_test'
 require_relative 'f_test'
 require_relative 'orthogonal_table'
+require_relative 'parameter_set_generation'
 require_relative './controllers/doe_result_controller'
 require_relative './controllers/orthogonal_controller'
 
@@ -26,27 +27,20 @@ class Doe < OacisModule
   def initialize(input_data)
     super(input_data)
 
-    @doe_result_controller = DOEResultController.new
-    @orthogonal_controller = OrthogonalController.new
-    # test_rows = [ {"beta" => {"bit" => "0", "value" => 0.5}, "H" => {"bit" => "0", "value" => -0.1}},
-    #               {"beta" => {"bit" => "0", "value" => 0.5}, "H" => {"bit" => "1", "value" => 0.0}},
-    #               {"beta" => {"bit" => "1", "value" => 0.6}, "H" => {"bit" => "0", "value" => -0.1}},
-    #               {"beta" => {"bit" => "1", "value" => 0.6}, "H" => {"bit" => "1", "value" => 0.0}}
-    #             ]
-    # test_rows.each do |row|
-    #   @orthogonal_controller.create(row)  
-    # end
-    # @orthogonal_controller.update("beta", "0")
+    @doe_result_controller = DOEResultController.new    
 
     @total_ps_block_count = 0
     @param_names = []
-    @step_size = {}
+    step_size = {}
 
     module_data.data["_input_data"]["search_parameter_ranges"].each do |key, range|
       @param_names.push(key)
-      @step_size[key] = range.max - range.min
-      @step_size[key] = @step_size[key].round(6) if @step_size[key].is_a?(Float)
+      step_size[key] = range.max - range.min
+      step_size[key] = step_size[key].round(6) if step_size[key].is_a?(Float)
     end
+
+    @ps_generation = ParameterSetGeneration.new(module_data, step_size)
+
 
     #range_hashes = [
     #                  {"beta"=>[0.2, 0.6], "H"=>[-1.0, 1.0]},
@@ -99,11 +93,10 @@ class Doe < OacisModule
 
     parameter_values = []
     oa_param = @param_names.map do |name|
-      {name: name, paramDefs: [0, 1]}
+      {name: name, paramDefs: [0, 1]} # number of level is '2'
     end
-    # @orthogonal_array = OrthogonalArray.new(oa_param)
-    table = OrthogonalTable.generation_orthogonal_table(oa_param)
 
+    table = OrthogonalTable.generation_orthogonal_table(oa_param)
     table.transpose.each do |row|
       @parameter_hash = {}
       @param_names.each_with_index do |name, idx|
@@ -133,20 +126,25 @@ class Doe < OacisModule
     @running_ps_block_list.each do |ps_block|
       mean_distances = MeanTest.mean_distances(ps_block)
 
-      parameter_set_block = ps_block_to_parameter_set_block(ps_block)
+      # parameter_set_block = ps_block_to_parameter_set_block(ps_block)
+      parameter_set_block = @ps_generation.ps_block_to_parameter_set_block(ps_block)
       result_block = ps_block[:keys].each_with_index.map {|key, index| 
         {key => mean_distances[index]}
       }
 
       @doe_result_controller.create(parameter_set_block, result_block)
       
-      new_ps_blocks(ps_block, mean_distances).each do |new_ps_block|
+      # new_ps_blocks(ps_block, mean_distances).each do |new_ps_block|
+      #   @ps_block_list << new_ps_block if !is_duplicate(new_ps_block)
+      # end
+      @ps_generation.new_ps_blocks(ps_block, mean_distances).each do |new_ps_block|
         @ps_block_list << new_ps_block if !is_duplicate(new_ps_block)
       end
     end
+
     @total_ps_block_count += @running_ps_block_list.size
   end
-
+=begin
   def new_ps_blocks(ps_block, mean_distances)
 
     ps_blocks = []
@@ -209,7 +207,9 @@ class Doe < OacisModule
     # ==========
     ps_blocks
   end
+=end
 
+=begin
   def ps_block_to_range_hash(ps_block)
 
     range_hash = {}
@@ -219,7 +219,9 @@ class Doe < OacisModule
     end
     range_hash
   end
+=end
 
+=begin
   def ps_block_to_parameter_set_block(ps_block)
     # parameter_set_block =
     #   { :id_set => [012345, 98765, 24680, .... ]
@@ -243,6 +245,7 @@ class Doe < OacisModule
     end
     parameter_set_block
   end
+=end
 
   #override
   def finished?
