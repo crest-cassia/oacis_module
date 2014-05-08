@@ -3,7 +3,11 @@ require_relative 'orthogonal_table'
 require 'pry'
 
 class ParameterSetGeneration
-	
+	#range_hashes = [
+  #                  {"beta"=>[0.2, 0.6], "H"=>[-1.0, 1.0]},
+  #                  ...
+  #                ]
+
 	#ps_block = {
   #             keys: ["beta", "H"],
   #             ps: [
@@ -14,14 +18,16 @@ class ParameterSetGeneration
   #             direction: "inside"
   #          }
 
-  
   def initialize(module_data, step_size)
   	@module_data = module_data
   	@step_size = step_size
   end
 
   # 
-  def initial_ps_block(range_hash)
+  def get_initial_ps_block
+  	range_hash = @module_data.data["_input_data"]["search_parameter_ranges"]
+    parameter_values = get_parameter_values_from_range_hash(range_hash)
+
   	ps_block = {}
     ps_block[:keys] = @module_data.data["_input_data"]["search_parameter_ranges"].map {|name, ranges| name}
     ps_block[:ps] = []
@@ -30,6 +36,7 @@ class ParameterSetGeneration
     end
     ps_block[:priority] = 1.0
     ps_block[:direction] = "outside"
+    ps_block
   end
 
   # 

@@ -42,13 +42,10 @@ class Doe < OacisModule
     @ps_generation = ParameterSetGeneration.new(module_data, step_size)
 
 
-    #range_hashes = [
-    #                  {"beta"=>[0.2, 0.6], "H"=>[-1.0, 1.0]},
-    #                  ...
-    #                ]
-    range_hash = module_data.data["_input_data"]["search_parameter_ranges"]
+    
+    # range_hash = module_data.data["_input_data"]["search_parameter_ranges"]
 
-    parameter_values = get_parameter_values_from_range_hash(range_hash)
+    # parameter_values = get_parameter_values_from_range_hash(range_hash)
 
     #ps_block = {
     #             keys: ["beta", "H"],
@@ -59,16 +56,19 @@ class Doe < OacisModule
     #             priority: 5.0,
     #             direction: "inside"
     #          }
-    ps_block = {}
-    ps_block[:keys] = module_data.data["_input_data"]["search_parameter_ranges"].map {|name, ranges| name}
-    ps_block[:ps] = []
-    parameter_values.each_with_index do |ps_v, index|
-      ps_block[:ps] << {v: ps_v, result: nil}
-    end
-    ps_block[:priority] = 1.0
-    ps_block[:direction] = "outside"
+
+    # ps_block = {}
+    # ps_block[:keys] = module_data.data["_input_data"]["search_parameter_ranges"].map {|name, ranges| name}
+    # ps_block[:ps] = []
+    # parameter_values.each_with_index do |ps_v, index|
+    #   ps_block[:ps] << {v: ps_v, result: nil}
+    # end
+    # ps_block[:priority] = 1.0
+    # ps_block[:direction] = "outside"
     @ps_block_list = []
-    @ps_block_list << ps_block
+    # @ps_block_list << ps_block
+    @ps_block_list << @ps_generation.get_initial_ps_block
+
   end
 
   private
@@ -126,7 +126,6 @@ class Doe < OacisModule
     @running_ps_block_list.each do |ps_block|
       mean_distances = MeanTest.mean_distances(ps_block)
 
-      # parameter_set_block = ps_block_to_parameter_set_block(ps_block)
       parameter_set_block = @ps_generation.ps_block_to_parameter_set_block(ps_block)
       result_block = ps_block[:keys].each_with_index.map {|key, index| 
         {key => mean_distances[index]}
@@ -134,9 +133,6 @@ class Doe < OacisModule
 
       @doe_result_controller.create(parameter_set_block, result_block)
       
-      # new_ps_blocks(ps_block, mean_distances).each do |new_ps_block|
-      #   @ps_block_list << new_ps_block if !is_duplicate(new_ps_block)
-      # end
       @ps_generation.new_ps_blocks(ps_block, mean_distances).each do |new_ps_block|
         @ps_block_list << new_ps_block if !is_duplicate(new_ps_block)
       end
@@ -144,108 +140,6 @@ class Doe < OacisModule
 
     @total_ps_block_count += @running_ps_block_list.size
   end
-=begin
-  def new_ps_blocks(ps_block, mean_distances)
-
-    ps_blocks = []
-
-    # => inside 
-    mean_distances.each_with_index do |mean_distance, index|
-      if mean_distance > module_data.data["_input_data"]["distance_threshold"]
-        v_values = ps_block[:ps].map {|ps| ps[:v][index] }
-        range = [v_values.min, v_values.max]
-        one_third = range[0]*2 / 3 + range[1]   /3
-        two_third = range[0]   / 3 + range[1]*2 /3
-        one_third = one_third.round(6) if one_third.is_a?(Float)
-        two_third = two_third.round(6) if two_third.is_a?(Float)
-        ranges = [
-          [range.first, one_third], [one_third, two_third], [two_third, range.last]
-        ]
-
-        range_hash = ps_block_to_range_hash(ps_block)
-        ranges.each do |r|
-          range_hash[ps_block[:keys][index]] = r
-          ps = get_parameter_values_from_range_hash(range_hash)
-          new_ps_block = {}
-          new_ps_block[:keys] = ps_block[:keys]
-          new_ps_block[:priority] = mean_distance
-          new_ps_block[:direction] = "inside"
-          new_ps_block[:ps] = ps.map {|p| {v: p}}
-          ps_blocks << new_ps_block
-        end
-      end
-    end
-    # ==========
-
-    # => outside
-    if ps_block[:direction] != "inside"
-      mean_distances.each_with_index do |mean_distance, index|
-        v_values = ps_block[:ps].map {|ps| ps[:v][index] }
-        range = [v_values.min, v_values.max]
-
-        lower = range[0] - @step_size[ps_block[:keys][index]]
-        upper = range[1] + @step_size[ps_block[:keys][index]]
-        lower = lower.round(6) if lower.is_a?(Float)
-        upper = upper.round(6) if upper.is_a?(Float)
-        ranges = [
-          [lower, range.first], [range.last, upper]
-        ]
-
-        range_hash = ps_block_to_range_hash(ps_block)
-        ranges.each do |r|
-          range_hash[ps_block[:keys][index]] = r
-          ps = get_parameter_values_from_range_hash(range_hash)
-          new_ps_block = {}
-          new_ps_block[:keys] = ps_block[:keys]
-          new_ps_block[:priority] = mean_distance
-          new_ps_block[:direction] = "outside"
-          new_ps_block[:ps] = ps.map {|p| {v: p}}
-          ps_blocks << new_ps_block
-        end
-      end
-    end
-    # ==========
-    ps_blocks
-  end
-=end
-
-=begin
-  def ps_block_to_range_hash(ps_block)
-
-    range_hash = {}
-    ps_block[:keys].each_with_index do |key, index|
-      v_values = ps_block[:ps].map {|ps| ps[:v][index] }
-      range_hash[key] = [v_values.min, v_values.max]
-    end
-    range_hash
-  end
-=end
-
-=begin
-  def ps_block_to_parameter_set_block(ps_block)
-    # parameter_set_block =
-    #   { :id_set => [012345, 98765, 24680, .... ]
-    #     :v_set => [ {"beta" => 0.2, "H" => 0.4},
-    #                 {"beta" => 0.2, "H" => 0.6},
-    #                 {"beta" => 0.4, "H" => 0.4},
-    #                  ...
-    #               ]
-    #   }
-    #
-    parameter_set_block = {:id_set => [], :v_set => [] }
-    ps_block[:ps].each do |ps|
-      parameter_set = {}
-      ps[:v].each_with_index do |value, index|
-        parameter_set[ps_block[:keys][index]] = value
-      end
-      query = {}
-      parameter_set.each{|k,v| query["v.#{k}"] = v }
-      parameter_set_block[:id_set] << ParameterSet.where(query).first._id
-      parameter_set_block[:v_set] << parameter_set
-    end
-    parameter_set_block
-  end
-=end
 
   #override
   def finished?
