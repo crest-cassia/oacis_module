@@ -99,7 +99,7 @@ class Doe < OacisModule
 
     puts "# of ps_block_list.size = #{@ps_block_list.size}"
     puts "total_ps_block_count = #{@total_ps_block_count}"
-    @ps_block_list.empty? or  @total_ps_block_count > module_data.data["_input_data"]["ps_block_count_max"]
+    @ps_block_list.empty? or @total_ps_block_count > module_data.data["_input_data"]["ps_block_count_max"]
   end
 
   #override
