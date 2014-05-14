@@ -209,7 +209,7 @@ binding.pry
     oa_param = @module_input_data["search_parameter_ranges"].map{|name, range|
     	{name: name, paramDefs: [0, 1]}
     }
-binding.pry
+
     table = OrthogonalTable.generation_orthogonal_table(oa_param)
 
     table.transpose.each do |row|
