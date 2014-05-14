@@ -46,6 +46,10 @@ module OrthogonalTable
 		return table
 	end
 
+  def self.generate_blocks()
+    
+  end
+
   # 
 	def self.generate_area(sql_connector, id_list, new_param, parameter)
     return [] if new_param[:param][:paramDefs].empty?
