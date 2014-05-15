@@ -21,12 +21,14 @@ class ParameterSetGeneration
   def initialize(module_data, step_size)
     @module_input_data = module_data.data["_input_data"]
     @step_size = step_size
+    @xot = ExtensibleOrthogonalTable.new(module_data.data["_input_data"])
   end
 
   # 
   def get_initial_ps_block
     range_hash = @module_input_data["search_parameter_ranges"]
-    parameter_values = get_parameter_values_from_range_hash(range_hash)
+    # parameter_values = get_parameter_values_from_range_hash(range_hash)
+    parameter_values = get_parameter_values_from_range_hash_extOT(range_hash)
 
   	ps_block = {}
     ps_block[:keys] = @module_input_data["search_parameter_ranges"].map {|name, ranges| name}
@@ -36,7 +38,6 @@ class ParameterSetGeneration
     end
     ps_block[:priority] = 1.0
     ps_block[:direction] = "outside"
-binding.pry    
     ps_block
   end
 
@@ -55,7 +56,14 @@ binding.pry
         ranges = [
           [range.first, one_third], [one_third, two_third], [two_third, range.last]
         ]
+# test
+        old_rows = []
+        ranges.each do |range|
+          old_rows += @xot.is_alredy_block_include_range({ps_block[:keys][index] => range})
+        end
+        binding.pry if !old_rows.empty?
 
+# test
         range_hash = ps_block_to_range_hash(ps_block)
         ranges.each do |r|
           range_hash[ps_block[:keys][index]] = r
@@ -117,11 +125,16 @@ binding.pry
           [range.first, one_third], [one_third, two_third], [two_third, range.last]
         ]
 
-        range_hash = ps_block_to_range_hash(ps_block)
+        ranges.each do |range| 
+          @xot.is_alredy_block_include_range({ps_block[:keys][index] => range})
+        end
+
+        # range_hash = ps_block_to_range_hash(ps_block) <- modify
+
         ranges.each do |r|
           range_hash[ps_block[:keys][index]] = r
           ps = get_parameter_values_from_range_hash(range_hash)
-          # get_parameter_values_from_range_hash_extOT(range_hash)
+          # get_parameter_values_from_range_hash_extOT(range_hash) <- modified method
           new_ps_block = {}
           new_ps_block[:keys] = ps_block[:keys]
           new_ps_block[:priority] = mean_distance
@@ -147,7 +160,8 @@ binding.pry
           [lower, range.first], [range.last, upper]
         ]
 
-        range_hash = ps_block_to_range_hash(ps_block)
+        # range_hash = ps_block_to_range_hash(ps_block) <- modify
+
         ranges.each do |r|
           range_hash[ps_block[:keys][index]] = r
           ps = get_parameter_values_from_range_hash(range_hash)
@@ -223,5 +237,29 @@ binding.pry
     end
 
     parameter_values
+  end
+
+  # 
+  def get_initial_values_extOT(range_hash)
+    parameter_values = []
+    oa_param = @module_input_data["search_parameter_ranges"].map{|name, range|
+      {name: name, paramDefs: [0, 1]}
+    }
+    table = OrthogonalTable.generation_orthogonal_table(oa_param)
+    table.transpose.each do |row|
+      parameter_hash = {}
+      oa_param.each_with_index do |param, idx|
+        range = range_hash[param[:name]]
+        parameter_value = range[ row[idx].to_i ]
+        parameter_hash[param[:name]] = parameter_value
+      end
+      rows = @xot.generation_orthogonal_table(parameter_hash) # <- regist initial orthgonal table
+      parameter_values << @module_input_data["search_parameter_ranges"].map {|name, ranges| parameter_hash[name] }
+    end
+    parameter_values # <- ps
+  end
+
+  def get_parameter_values_from_range_hash_extOT(range_hash, ps_block)
+    
   end
 end

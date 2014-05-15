@@ -25,11 +25,13 @@ class OrthogonalController #< ApplicationController
 	def destroy
   end
 
-  def find(condition)
+  def check(condition)
   	logon_doe_DB
   	ret = Orthogonal.where(condition)
+# binding.pry
   	leave_doe_DB
-  	ret 
+ # binding.pry
+  	return ret
   end
 
   # 
