@@ -5,11 +5,13 @@ class DOEResultController #< ApplicationController
 	def create(ps_block_with_id_set, result_block)
 		logon_doe_DB
 
-		DOEResult.create(
+		result = DOEResult.create!(
       module_name: "doe",
       block: ps_block_with_id_set,
       results: result_block
 		)
+
+    result.save!
 
 		leave_doe_DB
 	end

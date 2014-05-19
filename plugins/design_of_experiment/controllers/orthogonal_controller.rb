@@ -3,12 +3,15 @@ require 'pry'
 
 class OrthogonalController #< ApplicationController
 
+  #
 	def create(row)
 		logon_doe_DB
-		Orthogonal.create(row: row)
+		o_table = Orthogonal.create!(row: row)
+    o_table.save!
 		leave_doe_DB
 	end
 
+  #
 	def update(name, bit)
 		logon_doe_DB
 		orthogonal_rows = Orthogonal.where("row.#{name}.bit" => bit)
@@ -17,20 +20,25 @@ class OrthogonalController #< ApplicationController
 				tmp = orthogonal_row.row
 				tmp["#{name}"]["bit"] = "0#{bit}"
 				orthogonal_row.update_attributes!(row: tmp)
+        orthogonal_row.save
 			end
 		end
 		leave_doe_DB
 	end
 
+  # 
 	def destroy
   end
 
-  def check(condition)
+  # 
+  def find_rows(condition)
   	logon_doe_DB
+
   	ret = Orthogonal.where(condition)
-# binding.pry
+    ret.count
+
   	leave_doe_DB
- # binding.pry
+
   	return ret
   end
 
@@ -38,7 +46,7 @@ class OrthogonalController #< ApplicationController
   def duplicate_check(rows)
   	logon_doe_DB
 
-  	checked_rows = {:new => [], :dulicate => []}
+  	checked_rows = {:new => [], :duplicate => []}
 
   	rows.each do |row|
   		condition = {}
@@ -47,7 +55,7 @@ class OrthogonalController #< ApplicationController
   		end
   		orthogonal_row = Orthogonal.where(condition)
   		if orthogonal_row.count > 0
-  			checked_rows[:dulicate] << row
+  			checked_rows[:duplicate] += orthogonal_row.map{|ort| ort.row}
   		else
   			checked_rows[:new] << row
   		end
@@ -58,6 +66,7 @@ class OrthogonalController #< ApplicationController
 		checked_rows
   end
 
+  # 
   def show
   end
 

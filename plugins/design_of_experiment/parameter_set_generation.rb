@@ -27,8 +27,8 @@ class ParameterSetGeneration
   # 
   def get_initial_ps_block
     range_hash = @module_input_data["search_parameter_ranges"]
-    # parameter_values = get_parameter_values_from_range_hash(range_hash)
-    parameter_values = get_parameter_values_from_range_hash_extOT(range_hash)
+    parameter_values = get_parameter_values_from_range_hash(range_hash)
+    # parameter_values = get_initial_parameter_values_extOT(range_hash)
 
   	ps_block = {}
     ps_block[:keys] = @module_input_data["search_parameter_ranges"].map {|name, ranges| name}
@@ -38,6 +38,41 @@ class ParameterSetGeneration
     end
     ps_block[:priority] = 1.0
     ps_block[:direction] = "outside"
+    ps_block
+  end
+
+  #
+  def get_initial_ps_block_by_extOT
+    range_hash = @module_input_data["search_parameter_ranges"]
+    parameter_values = []
+    oa_param = @module_input_data["search_parameter_ranges"].map{|name, range|
+      {name: name, paramDefs: [0, 1]}
+    }
+    ps_block = {}
+    ps_block[:keys] = @module_input_data["search_parameter_ranges"].map {|name, ranges| name}
+    ps_block[:ps] = []
+    ps_block[:priority] = 1.0
+    ps_block[:direction] = "outside"
+
+    rows = []
+
+    table = OrthogonalTable.generation_orthogonal_table(oa_param)
+    table.transpose.each do |row|
+      parameter_hash = {}
+      regist_row_hash = {}
+      oa_param.each_with_index do |param, idx|
+        range = range_hash[param[:name]]
+        parameter_value = range[ row[idx].to_i ]
+        parameter_hash[param[:name]] = parameter_value
+        regist_row_hash[param[:name]] = {"bit" => row[idx], "value" => parameter_value}
+      end
+      # parameter_values << @module_input_data["search_parameter_ranges"].map {|name, ranges| parameter_hash[name] }
+      ps_v = @module_input_data["search_parameter_ranges"].map {|name, ranges| parameter_hash[name] }
+      ps_block[:ps] << {v: ps_v, result: nil}
+      rows << regist_row_hash
+    end
+
+    checked = @xot.initial_regist_rows(rows)
     ps_block
   end
 
@@ -58,12 +93,14 @@ class ParameterSetGeneration
         ]
 # test
         old_rows = []
-        ranges.each do |range|
-          old_rows += @xot.is_alredy_block_include_range({ps_block[:keys][index] => range})
+        ranges.each do |r|
+          old_rows << @xot.is_alredy_block_include_range({ps_block[:keys][index] => r})
         end
-        binding.pry if !old_rows.empty?
-
-# test
+        if !old_rows.empty?
+          @xot.get_rows(ps_block)
+          binding.pry
+        end
+# =test
         range_hash = ps_block_to_range_hash(ps_block)
         ranges.each do |r|
           range_hash[ps_block[:keys][index]] = r
@@ -239,27 +276,7 @@ class ParameterSetGeneration
     parameter_values
   end
 
-  # 
-  def get_initial_values_extOT(range_hash)
-    parameter_values = []
-    oa_param = @module_input_data["search_parameter_ranges"].map{|name, range|
-      {name: name, paramDefs: [0, 1]}
-    }
-    table = OrthogonalTable.generation_orthogonal_table(oa_param)
-    table.transpose.each do |row|
-      parameter_hash = {}
-      oa_param.each_with_index do |param, idx|
-        range = range_hash[param[:name]]
-        parameter_value = range[ row[idx].to_i ]
-        parameter_hash[param[:name]] = parameter_value
-      end
-      rows = @xot.generation_orthogonal_table(parameter_hash) # <- regist initial orthgonal table
-      parameter_values << @module_input_data["search_parameter_ranges"].map {|name, ranges| parameter_hash[name] }
-    end
-    parameter_values # <- ps
-  end
-
-  def get_parameter_values_from_range_hash_extOT(range_hash, ps_block)
+  # def get_parameter_values_from_range_hash_extOT(range_hash, ps_block)
     
-  end
+  # end
 end

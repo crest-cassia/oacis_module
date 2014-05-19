@@ -42,7 +42,7 @@ class Doe < OacisModule
     @ps_generation = ParameterSetGeneration.new(module_data, step_size)
 
     @ps_block_list = []
-    @ps_block_list << @ps_generation.get_initial_ps_block
+    @ps_block_list << @ps_generation.get_initial_ps_block_by_extOT#get_initial_ps_block
   end
 
   private
