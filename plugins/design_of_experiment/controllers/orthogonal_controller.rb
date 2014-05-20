@@ -70,6 +70,22 @@ class OrthogonalController #< ApplicationController
   def show
   end
 
+  def test_query
+    logon_doe_DB
+    binding.pry
+    leave_doe_DB
+  end
+
+  def get_parameter_correspond(name)
+    logon_doe_DB
+    rows = []
+    Orthogonal.each do |doc|
+      rows << doc["row.#{name}"]
+    end
+    leave_doe_DB
+    return rows.uniq
+  end
+
   private
   def logon_doe_DB
   	Mongoid::sessions.clear

@@ -66,7 +66,6 @@ class ParameterSetGeneration
         parameter_hash[param[:name]] = parameter_value
         regist_row_hash[param[:name]] = {"bit" => row[idx], "value" => parameter_value}
       end
-      # parameter_values << @module_input_data["search_parameter_ranges"].map {|name, ranges| parameter_hash[name] }
       ps_v = @module_input_data["search_parameter_ranges"].map {|name, ranges| parameter_hash[name] }
       ps_block[:ps] << {v: ps_v, result: nil}
       rows << regist_row_hash
@@ -91,16 +90,7 @@ class ParameterSetGeneration
         ranges = [
           [range.first, one_third], [one_third, two_third], [two_third, range.last]
         ]
-# test
-        old_rows = []
-        ranges.each do |r|
-          old_rows << @xot.is_alredy_block_include_range({ps_block[:keys][index] => r})
-        end
-        if !old_rows.empty?
-          @xot.get_rows(ps_block)
-          binding.pry
-        end
-# =test
+
         range_hash = ps_block_to_range_hash(ps_block)
         ranges.each do |r|
           range_hash[ps_block[:keys][index]] = r
@@ -152,21 +142,28 @@ class ParameterSetGeneration
     # => inside 
     mean_distances.each_with_index do |mean_distance, index|
       if mean_distance > @module_input_data["distance_threshold"]
-        v_values = ps_block[:ps].map {|ps| ps[:v][index] }
-        range = [v_values.min, v_values.max]
-        one_third = range[0]*2 / 3 + range[1]   /3
-        two_third = range[0]   / 3 + range[1]*2 /3
-        one_third = one_third.round(6) if one_third.is_a?(Float)
-        two_third = two_third.round(6) if two_third.is_a?(Float)
-        ranges = [
-          [range.first, one_third], [one_third, two_third], [two_third, range.last]
-        ]
+        # v_values = ps_block[:ps].map {|ps| ps[:v][index] }
+        # range = [v_values.min, v_values.max]
+        # one_third = range[0]*2 / 3 + range[1]   /3
+        # two_third = range[0]   / 3 + range[1]*2 /3
+        # one_third = one_third.round(6) if one_third.is_a?(Float)
+        # two_third = two_third.round(6) if two_third.is_a?(Float)
+        # ranges = [
+        #   [range.first, one_third], [one_third, two_third], [two_third, range.last]
+        # ]
 
-        ranges.each do |range| 
-          @xot.is_alredy_block_include_range({ps_block[:keys][index] => range})
-        end
-
+        # old_row_set = []
+        # ranges.each do |r|
+        #   old_rows = @xot.is_alredy_block_include_range({ps_block[:keys][index] => r})
+        #   if !old_rows.empty?
+        #     @xot.get_rows(ps_block)
+        #     binding.pry
+        #   end  
+        # end
+        
+        
         # range_hash = ps_block_to_range_hash(ps_block) <- modify
+        range_hash = @xot.inside_range_hash(ps_block, index)
 
         ranges.each do |r|
           range_hash[ps_block[:keys][index]] = r
@@ -276,7 +273,4 @@ class ParameterSetGeneration
     parameter_values
   end
 
-  # def get_parameter_values_from_range_hash_extOT(range_hash, ps_block)
-    
-  # end
 end
