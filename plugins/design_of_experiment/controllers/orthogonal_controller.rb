@@ -66,16 +66,7 @@ class OrthogonalController #< ApplicationController
 		checked_rows
   end
 
-  # 
-  def show
-  end
-
-  def test_query
-    logon_doe_DB
-    binding.pry
-    leave_doe_DB
-  end
-
+  #
   def get_parameter_correspond(name)
     logon_doe_DB
     rows = []
@@ -84,6 +75,17 @@ class OrthogonalController #< ApplicationController
     end
     leave_doe_DB
     return rows.uniq
+  end
+
+
+  # 
+  def show
+  end
+
+  def test_query
+    logon_doe_DB
+    binding.pry
+    leave_doe_DB
   end
 
   private
@@ -96,4 +98,18 @@ class OrthogonalController #< ApplicationController
   	Mongoid::sessions.clear
 		Mongoid::Config.load!(File.join(Rails.root, 'config/mongoid.yml'))
   end
+
+  # # 
+  # def ps_blocks_to_rows(ps_block)
+  #   rows = []
+  #   param_names = ps_block[:keys].map{|k| k }
+  #   ps_block[:ps].each do |ps|
+  #     row = {}
+  #     ps[:v].each_with_index do |value, idx|
+  #       row[param_names[idx]] = {"bit" => nil, "value" => value}
+  #     end
+  #     rows << row
+  #   end
+  #   rows
+  # end
 end

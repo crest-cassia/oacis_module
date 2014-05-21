@@ -224,7 +224,7 @@ class ParameterSetGeneration
     #               ]
     #   }
     #
-    with_id_set = {:id_set => [], :v_set => [] }
+    with_id_set = {:parameter_set_id => [], :v_set => [] }
     ps_block[:ps].each do |ps|
       parameter_set = {}
       ps[:v].each_with_index do |value, index|
@@ -232,7 +232,7 @@ class ParameterSetGeneration
       end
       query = {}
       parameter_set.each{|k,v| query["v.#{k}"] = v }
-      with_id_set[:id_set] << ParameterSet.where(query).first._id
+      with_id_set[:parameter_set_id] << ParameterSet.where(query).first._id
       with_id_set[:v_set] << parameter_set
     end
     with_id_set
