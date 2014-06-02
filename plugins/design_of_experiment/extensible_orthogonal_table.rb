@@ -165,21 +165,11 @@ class ExtensibleOrthogonalTable
             max_bit = max_cor["bit"]
             new_range << max_cor["value"]
           end
-
-
-          if !min_bit.nil? && !max_bit.nil? # <- already assigned parameters are existed
-            new_range = []
-            new_ranges = []
-          else
-            new_range.sort!
-            new_ranges = [  [old_range.first, new_range.max], 
-                            new_range, 
-                            [new_range.min, old_range.last]
-                          ]
-          end
         end
 
-        if (!min_bit.nil? && !max_bit.nil?)
+        if (!min_bit.nil? && !max_bit.nil?)  # <- already assigned parameters are existed
+          new_range = []
+          new_ranges = []
           # old_rows = get_rows(ps_block)
           condition = {"$or" => []}
           or_condition = {"$or" => [{"row.#{param_name}.bit" => min_bit}, {"row.#{param_name}.bit" => max_bit}]}
@@ -194,13 +184,13 @@ class ExtensibleOrthogonalTable
           existed_rows = @orthogonal_controller.find_rows(condition)
 
           if existed_rows.count > 0
-            existed_ps_blocks << rows_to_ps_block(rows)
-            ps_blocks = [{}, {}]
+            existed_ps_blocks << rows_to_ps_block(existed_rows, ps_block[:direction], ps_block[:priority])
+            ps_blocks = [{}, {}] # generate template
             ps_blocks.each do |ps_hash|
               ps_block[:keys] = rows[0]["row"].map{|key, corr| key }  
               ps_block[:ps] = []
               ps_block[:priority] = priority
-              ps_block[:direction] = direction  
+              ps_block[:direction] = "inside"
             end
                 
             existed_rows.each do |row|
@@ -219,16 +209,24 @@ class ExtensibleOrthogonalTable
             end
             existed_ps_blocks += ps_blocks
           end
+        else
+          new_range.sort!
+          new_ranges = [  [old_range.first, new_range.max], 
+                          new_range, 
+                          [new_range.min, old_range.last]
+                        ]
         end
       end
     end
     
     new_ps_blocks = []
     new_ranges.each do |inside_range|
-      new_ps_blocks << inside_ps_block(old_rows, param_name, inside_range)  
+      if !inside_range.empty?
+        new_ps_blocks << inside_range_to_ps_block(old_rows, param_name, inside_range)
+      end
     end
 binding.pry
-    return new_ps_blocks
+    return new_ps_blocks + existed_ps_blocks
   end
 
   # 
@@ -277,11 +275,13 @@ binding.pry
       upper = upper.round(6)if new_lower.class == Float
     end
 
-    lower_upper = [lower, upper]
-    ranges = [ [lower, old_range.min], [old_range.max, upper] ]
+    # lower_upper = [lower, upper]
+    # ranges = [ [lower, old_range.min], [old_range.max, upper] ]
+    lower_range = [lower, old_range.min]
+    upper_range = [old_range.max, upper]
+
 
     existed_ps_blocks = []
-
     if 2 < param_defs.size
       # if param_defs.include?(new_array.min) ||
       #   !(tmp = near_value(new_array.min, param_defs, name, definition)).nil?
@@ -293,13 +293,23 @@ binding.pry
       #   max_bit = parameters[name][:correspond].key(new_array.max)
       #   new_array.delete(new_array.max)
       # end
-      if param_defs.include?(lower) || !(near_value(lower, param_defs, param_name)).nil?
+      if param_defs.include?(lower)
         min_bit = corresponds.find{|cor| cor["value"] == lower}
-        lower_upper.delete(lower)
+        # lower_upper.delete(lower)
+        lower_range.clear
+      elsif !(near_lower = near_value(lower, param_defs, param_name)).nil?
+        min_bit = corresponds.find{|cor| cor["value"] == near_lower}
+        # lower_upper.delete(lower)
+        lower_range.clear
       end
-      if param_defs.include?(upper) || !(near_value(upper, param_defs, param_name)).nil?
+      if param_defs.include?(upper)
         max_bit = corresponds.find{|cor| cor["value"] == upper}
-        lower_upper.delete(upper)
+        # lower_upper.delete(upper)
+        upper_range.clear
+      elsif !(near_upper = near_value(upper, param_defs, param_name)).nil?
+        max_bit = corresponds.find{|cor| cor["value"] == near_upper}
+        # lower_upper.delete(upper)
+        upper_range.clear
       end
       
       # if !min_bit.nil?
@@ -323,8 +333,21 @@ binding.pry
         # pmin_cor = corresponds.find{|cor| cor["value"] == old_range.min}
         # condition = {"row.#{param_name}.value" => old_range.min}
         # rows = @orthogonal_controller.find_rows(condition)
-        old_rows.select{|row| row["row"]}
-
+        # old_lower_bit = corresponds.find{|cor| cor["value"] == old_range.min}["bit"]
+        condition = {"$or" => []}
+        or_condition = {"$or" => [{"row.#{param_name}.value" => min_bit}, {"row.#{param_name}.value" => old_range.min}]}#{"row.#{param_name}.bit" => old_lower_bit}]}
+        and_condition = {"$and" => []}
+        old_rows.each do |row|
+          row.each do |key, corr|
+            if key != param_name
+              and_condition["$and"] << {"row.#{key}.bit" => corr["bit"]}
+            end
+          end
+        end
+        and_condition << or_condition
+        condition << and_condition
+        lower_rows = @orthogonal_controller.find_rows(condition)
+        existed_ps_blocks << rows_to_ps_block(lower_rows, ps_block[:direction], ps_block[:priority])
       end
 
       # if !max_bit.nil?
@@ -344,8 +367,34 @@ binding.pry
       #   exist_area = sql_connector.read_record(:orthogonal, condition) # nil check is easier maybe
       #   new_area.push(exist_area.map{|r| r["id"]})
       # end
+      if !max_bit.nil?
+        condition = {"$or" => []}
+        or_condition = {"$or" => [{"row.#{param_name}.value" => max_bit}, {"row.#{param_name}.value" => old_range.max}]}#{"row.#{param_name}.bit" => old_lower_bit}]}
+        and_condition = {"$and" => []}
+        old_rows.each do |row|
+          row.each do |key, corr|
+            if key != param_name
+              and_condition["$and"] << {"row.#{key}.bit" => corr["bit"]}
+            end
+          end
+        end
+        and_condition << or_condition
+        condition << and_condition
+        upper_rows = @orthogonal_controller.find_rows(condition)
+        existed_ps_blocks << rows_to_ps_block(upper_rows, ps_block[:direction], ps_block[:priority])
+      end
     end
+    
+    new_ranges = [lower_range, upper_range]
 
+    new_ps_blocks = []
+    new_ranges.each do |outside_range|
+      if !outside_range.empty?
+        new_ps_blocks << outside_range_to_ps_block(old_rows, param_name, outside_range)
+      end
+    end
+binding.pry
+    return new_ps_blocks + existed_ps_blocks
   end
 
   def test_query
@@ -395,7 +444,7 @@ binding.pry
   end
 
   # new ranges have been assigned
-  def inside_ps_block(old_rows, name, inside_range)
+  def inside_range_to_ps_block(old_rows, name, inside_range)
     return [] if inside_range.empty?
     
     # orCond = [:or]
@@ -561,7 +610,7 @@ binding.pry
   end
 
   # 
-  def outside_ps_block(old_rows, outside_range)
+  def outside_range_to_ps_block(old_rows, name, outside_range)
     return [] if outside_range.empty?
     
     # if new_lower_bit == new_upper_bit
@@ -714,14 +763,7 @@ binding.pry
     }
 
     return [[old_lower_value_rows, old_upper_value_rows], [new_lower_value_rows, new_upper_value_rows]]
-
   end
-
-  #
-  def row_ids_to_ps_block(row_ids)
-    
-  end
-  
 
   # 
   def extend_orthogonal_table(name, new_variables)
