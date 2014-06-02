@@ -21,6 +21,11 @@ class Doe < OacisModule
       # "beta" => [0.5, 0.6],
       # "H" => [-0.1, 0.0]
     }
+    h["step_size"] = {}
+    h["search_parameter_ranges"].each do |key, range|
+      step_size[key] = range.max - range.min
+      step_size[key] = step_size[key].round(6) if step_size[key].is_a?(Float)
+    end
     h
   end
 
@@ -28,17 +33,8 @@ class Doe < OacisModule
     super(input_data)
 
     @doe_result_controller = DOEResultController.new    
-
     @total_ps_block_count = 0
-    @param_names = []
-
-    step_size = {}
-    module_data.data["_input_data"]["search_parameter_ranges"].each do |key, range|
-      @param_names.push(key)
-      step_size[key] = range.max - range.min
-      step_size[key] = step_size[key].round(6) if step_size[key].is_a?(Float)
-    end
-
+    step_size = module_data.data["_input_data"]["step_size"]
     @ps_generation = ParameterSetGeneration.new(module_data, step_size)
 
     @ps_block_list = []
