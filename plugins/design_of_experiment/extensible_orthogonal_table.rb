@@ -215,7 +215,7 @@ class ExtensibleOrthogonalTable
                           new_range, 
                           [new_range.min, old_range.last]
                         ]
-          extend_orthogonal_table(param_name, new_range, "inside")
+          update_orthogonal_table(param_name, new_range, "inside")
         end
       end
     end
@@ -393,7 +393,7 @@ binding.pry
     
     new_ps_blocks = []
     if !new_range.empty?
-      extend_orthogonal_table(param_name, new_range, "outside")
+      update_orthogonal_table(param_name, new_range, "outside")
       new_ranges.each do |outside_range|
         new_ps_blocks << outside_range_to_ps_block(old_rows, param_name, outside_range)
       end
@@ -756,7 +756,7 @@ binding.pry
   end
 
   # 
-  def extend_orthogonal_table(name, new_variables, direction)
+  def update_orthogonal_table(name, new_variables, direction)
     correspond = @orthogonal_controller.get_parameter_correspond(name)
     variables = correspond.map{|bit, value| value}.uniq
     additional_size = new_variables - variables
@@ -791,7 +791,7 @@ binding.pry
     return correspond
   end
 
-  # TODO: 
+  # 
   def assign_parameter_to_orthogonal(correspond, name, new_param, direction)
     min_bit = nil
     h = {}
