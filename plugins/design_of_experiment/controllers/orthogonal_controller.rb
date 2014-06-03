@@ -37,11 +37,11 @@ class OrthogonalController #< ApplicationController
     Orthogonal.each do |o_row|
       copied_row = o_row.dup.row
       tmp = o_row.row
-      tmp[name]["bit"] = "0#{bit}"
+      tmp[name]["bit"] = "0#{tmp[name]["bit"]}"
       o_row.update_attributes!(row: tmp)
       o_row.save
 
-      copied_row[name]["bit"] = "1#{bit}"
+      copied_row[name]["bit"] = "1#{copied_row[name]["bit"]}"
       copied_row[name]["value"] = nil
       o_table = Orthogonal.create!(row: copied_row)
       o_table.save!
@@ -51,15 +51,22 @@ class OrthogonalController #< ApplicationController
   end
 
   #
-  def assign_parameter_to_table(name, correspond)
+  def assign_parameter_to_table(name, corresponds)
     logon_doe_DB
+
+
+    condition = {"$or" => []}
+    corresponds.each do |bit, value|
+      condition["$or"] << {"row.#{name}.bit" => bit}
+    end
 
     orthogonal_rows = Orthogonal.where("row.#{name}.bit" => correspond["bit"])
     orthogonal_rows.count
     if !orthogonal_rows.nil?
       orthogonal_rows.each do |o_row|
+        if o_row.row[name]["bit"]
         tmp = orthogonal_row.row
-        tmp["#{name}"]["value"] = correspond["value"]
+        tmp[name]["value"] = correspond["value"]
         orthogonal_row.update_attributes!(row: tmp)
         orthogonal_row.save
       end

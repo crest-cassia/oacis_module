@@ -215,6 +215,7 @@ class ExtensibleOrthogonalTable
                           new_range, 
                           [new_range.min, old_range.last]
                         ]
+          extend_orthogonal_table(param_name, new_range, "inside")
         end
       end
     end
@@ -275,10 +276,11 @@ binding.pry
       upper = upper.round(6)if new_lower.class == Float
     end
 
-    # lower_upper = [lower, upper]
+    new_range = [lower, upper]
+    new_ranges = []
     # ranges = [ [lower, old_range.min], [old_range.max, upper] ]
-    lower_range = [lower, old_range.min]
-    upper_range = [old_range.max, upper]
+    # lower_range = [lower, old_range.min]
+    # upper_range = [old_range.max, upper]
 
 
     existed_ps_blocks = []
@@ -295,21 +297,21 @@ binding.pry
       # end
       if param_defs.include?(lower)
         min_bit = corresponds.find{|cor| cor["value"] == lower}
-        # lower_upper.delete(lower)
-        lower_range.clear
+        new_range.delete(lower)
+        # lower_range.clear
       elsif !(near_lower = near_value(lower, param_defs, param_name)).nil?
         min_bit = corresponds.find{|cor| cor["value"] == near_lower}
-        # lower_upper.delete(lower)
-        lower_range.clear
+        new_range.delete(lower)
+        # lower_range.clear
       end
       if param_defs.include?(upper)
         max_bit = corresponds.find{|cor| cor["value"] == upper}
-        # lower_upper.delete(upper)
-        upper_range.clear
+        new_range.delete(upper)
+        # upper_range.clear
       elsif !(near_upper = near_value(upper, param_defs, param_name)).nil?
         max_bit = corresponds.find{|cor| cor["value"] == near_upper}
-        # lower_upper.delete(upper)
-        upper_range.clear
+        new_range.delete(upper)
+        # upper_range.clear
       end
       
       # if !min_bit.nil?
@@ -348,6 +350,8 @@ binding.pry
         condition << and_condition
         lower_rows = @orthogonal_controller.find_rows(condition)
         existed_ps_blocks << rows_to_ps_block(lower_rows, ps_block[:direction], ps_block[:priority])
+      else
+        new_ranges << [lower, old_range.min]
       end
 
       # if !max_bit.nil?
@@ -382,17 +386,19 @@ binding.pry
         condition << and_condition
         upper_rows = @orthogonal_controller.find_rows(condition)
         existed_ps_blocks << rows_to_ps_block(upper_rows, ps_block[:direction], ps_block[:priority])
+      else
+        new_ranges << [old_range.max, upper]
       end
     end
     
-    new_ranges = [lower_range, upper_range]
-
     new_ps_blocks = []
-    new_ranges.each do |outside_range|
-      if !outside_range.empty?
+    if !new_range.empty?
+      extend_orthogonal_table(param_name, new_range, "outside")
+      new_ranges.each do |outside_range|
         new_ps_blocks << outside_range_to_ps_block(old_rows, param_name, outside_range)
       end
     end
+
 binding.pry
     return new_ps_blocks + existed_ps_blocks
   end
@@ -750,7 +756,7 @@ binding.pry
   end
 
   # 
-  def extend_orthogonal_table(name, new_variables)
+  def extend_orthogonal_table(name, new_variables, direction)
     correspond = @orthogonal_controller.get_parameter_correspond(name)
     variables = correspond.map{|bit, value| value}.uniq
     additional_size = new_variables - variables
@@ -758,19 +764,16 @@ binding.pry
     digit_num = Math.log2(variables.size + additional_size)
 
     if old_digit_num < digit_num # extend orthogonal table
-      # 1) get length of table
+      
       old_size = @orthogonal_controller.get_size
-      # 2) update assigned bit_strings to parameter in correspond
+      
       new_correspond = update_correspond_bit_string(correspond, digit_num, old_digit_num, old_size)
-      # 4) update bit strings in mongo
+      
       @orthogonal_controller.add_copied_table(name)
-      
-      
-      # 4.1) unassigned bit_string indicate value as "nil" 
-      
     end
-      link_parameter
-    # 
+
+    assign_parameter_to_orthogonal(correspond, name, new_variables, direction)
+    
 binding.pry
   end
 
@@ -857,41 +860,45 @@ binding.pry
       raise "new parameter could not be assigned to bit on orthogonal table"
     end
 
-    old_level = correspond.size
-    param_defs += add_parameters
-    link_parameter(name, h)
-    # binding.pry if @debugFlag
+    # old_level = correspond.size
+    # param_defs += add_parameters
+    additional_cor = link_parameter(name, h)
+    @orthogonal_controller.assign_parameter_to_table(name, additional_cor)
+binding.pry
   end
 
   # 
-  def link_parameter()
-    digit_num = log2(param_defs.size).ceil
-    old_level = param_defs.size - paramDefs_hash.size
-    top = param_defs.size
+  def link_parameter(correspond, paramDefs_hash)
+    added_corresponds = {}
+    total_size = correspond.size + paramDefs_hash.size
+    digit_num = log2(total_size).ceil
+    old_level = correspond.size
     bit_i = 0
-    while bit_i < top
+    while bit_i < total_size
       bit = ("%0" + digit_num.to_s + "b") % bit_i
-      if !@parameters[name][:correspond].key?(bit)
-        if paramDefs_hash.has_value?(bit[-1]) #(bit[bit.size-1])
-          param = paramDefs_hash.key(bit[-1]) #(bit[bit.size-1])
-          @parameters[name][:correspond][bit] = param
+      # if !@parameters[name][:correspond].key?(bit)
+      if corresponds.find{|cor| cor["bit"] == bit}.nil?
+        if paramDefs_hash.has_value?(bit[-1])
+          param = paramDefs_hash.key(bit[-1])
+          corresponds["bit"] = param
+          added_corresponds["bit"] = param
           paramDefs_hash.delete(param)
         else
-          top += 1
-          debug("#{paramDefs_hash}, top_count: #{top}")
-          debug("bit:#{bit}, last_str:#{bit[-1]}")
-          # debug("#{pp @parameters[name]}")
-          # exit(0) if top > 100
+          total_size += 1
+          # debug("#{paramDefs_hash}, top_count: #{total_size}")
+          # debug("bit:#{bit}, last_str:#{bit[-1]}")
         end 
       end
       bit_i += 1
     end
-    if param_defs.size != @parameters[name][:correspond].size
-      raise "no assignment parameter: 
-        defs_L:#{param_defs.size}, 
-        corr_L:#{@parameters[name][:correspond].size}"
-      # binding.pry
-    end
+    # if param_defs.size != @parameters[name][:correspond].size
+    #   raise "no assignment parameter: 
+    #     defs_L:#{param_defs.size}, 
+    #     corr_L:#{@parameters[name][:correspond].size}"
+    #   # binding.pry
+    # end
+
+    return added_corresponds
   end
 
   # 
