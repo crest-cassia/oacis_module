@@ -218,6 +218,11 @@ class ExtensibleOrthogonalTable
           update_orthogonal_table(param_name, new_range, "inside")
         end
       end
+    else
+      new_ranges = [ [old_range.first, new_range.max], 
+                     new_range, 
+                     [new_range.min, old_range.last]
+                   ]
     end
     
     new_ps_blocks = []
@@ -597,7 +602,7 @@ binding.pry
     }
 =end
     
-    old_lu_rows, new_lu_rows = get_lower_upper_rows(old_rows, new_rows)
+    old_lu_rows, new_lu_rows = get_lower_upper_rows(name, old_rows, new_rows)
     
     # generated_area = []
     # # (new_lower, new_upper)
@@ -620,7 +625,7 @@ binding.pry
     return [] if outside_range.empty?
 
     new_rows = find_rows(name, outside_range)
-    old_lu_rows, new_lu_rows = get_lower_upper_rows(old_rows, new_rows)
+    old_lu_rows, new_lu_rows = get_lower_upper_rows(name, old_rows, new_rows)
 
     new_ps_blocks = []
     new_ps_blocks << rows_to_ps_block(new_lu_rows[0] + old_lu_rows[0])
@@ -630,7 +635,7 @@ binding.pry
   end
 
   # 
-  def get_lower_upper_rows(old_rows, new_rows)
+  def get_lower_upper_rows(name, old_rows, new_rows)
 
     old_lower_value_rows = []
     old_upper_value_rows = []
@@ -643,9 +648,9 @@ binding.pry
         # old_lower_value_rows.push(row["id"])
         # old_lower_value = parameter[:correspond][row[new_param[:param][:name]]]
         # old_lower_bit = row[new_param[:param][:name]]
-        old_lower_value_rows.push(row["row"])
-        old_lower_value = row["row"][name]["value"]
-        old_lower_bit = row["row"][name]["bit"]
+        old_lower_value_rows.push(row)
+        old_lower_value = row[name]["value"]
+        old_lower_bit = row[name]["bit"]
       else
         # if parameter[:correspond][row[new_param[:param][:name]]] < old_lower_value
         #   old_lower_value_rows.clear
@@ -655,13 +660,13 @@ binding.pry
         # elsif parameter[:correspond][row[new_param[:param][:name]]] == old_lower_value
         #   old_lower_value_rows.push(row["id"])
         # end
-        if row["row"][name]["value"] < old_lower_value
+        if row[name]["value"] < old_lower_value
           old_lower_value_rows.clear
-          old_lower_value_rows.push(row["row"])
-          old_lower_value = row["row"][name]["value"]
-          old_lower_bit = row["row"][name]["bit"]
-        elsif row["row"][name]["value"] == old_lower_value
-          old_lower_value_rows.push(row["row"])
+          old_lower_value_rows.push(row)
+          old_lower_value = row[name]["value"]
+          old_lower_bit = row[name]["bit"]
+        elsif row[name]["value"] == old_lower_value
+          old_lower_value_rows.push(row)
         end
       end
       
@@ -669,9 +674,9 @@ binding.pry
         # old_upper_value_rows.push(row["id"])
         # old_upper_value = parameter[:correspond][row[new_param[:param][:name]]]
         # old_upper_bit = row[new_param[:param][:name]]
-        old_upper_value_rows.push(row["row"])
-        old_upper_value = row["row"][name]["value"]
-        old_upper_bit = row["row"][name]["bit"]
+        old_upper_value_rows.push(row)
+        old_upper_value = row[name]["value"]
+        old_upper_bit = row[name]["bit"]
       else
         # if old_upper_value < parameter[:correspond][row[new_param[:param][:name]]]
         #   old_upper_value_rows.clear
@@ -681,13 +686,13 @@ binding.pry
         # elsif old_upper_value == parameter[:correspond][row[new_param[:param][:name]]]
         #   old_upper_value_rows.push(row["id"])
         # end
-        if old_upper_value < row["row"][name]["value"]
+        if old_upper_value < row[name]["value"]
           old_upper_value_rows.clear
-          old_upper_value_rows.push(row["row"])
-          old_upper_value = row["row"][name]["value"]
-          old_upper_bit = row["row"][name]["bit"]
-        elsif row["row"][name]["value"] == old_upper_value
-          old_upper_value_rows.push(row["row"])
+          old_upper_value_rows.push(row)
+          old_upper_value = row[name]["value"]
+          old_upper_bit = row[name]["bit"]
+        elsif row[name]["value"] == old_upper_value
+          old_upper_value_rows.push(row)
         end
       end
     }
@@ -703,9 +708,9 @@ binding.pry
         # new_lower_value_rows.push(row["id"])
         # new_lower_value = parameter[:correspond][row[new_param[:param][:name]]]
         # new_lower_bit = row[new_param[:param][:name]]
-        new_lower_value_rows.push(row["row"])
-        new_lower_value = row["row"][name]["value"]
-        new_lower_bit = row["row"][name]["bit"]
+        new_lower_value_rows.push(row)
+        new_lower_value = row[name]["value"]
+        new_lower_bit = row[name]["bit"]
       else
         # if parameter[:correspond][row[new_param[:param][:name]]] < new_lower_value
         #   new_lower_value_rows.clear
@@ -715,13 +720,13 @@ binding.pry
         # elsif parameter[:correspond][row[new_param[:param][:name]]] == new_lower_value
         #   new_lower_value_rows.push(row["id"])
         # end
-        if row["row"][name]["value"] < new_lower_value
+        if row[name]["value"] < new_lower_value
           new_lower_value_rows.clear
-          new_lower_value_rows.push(row["row"])
-          new_lower_value = row["row"][name]["value"]
-          new_lower_bit = row["row"][name]["bit"]
-        elsif row["row"][name]["value"] == new_lower_value
-          new_lower_value_rows.push(row["row"])
+          new_lower_value_rows.push(row)
+          new_lower_value = row[name]["value"]
+          new_lower_bit = row[name]["bit"]
+        elsif row[name]["value"] == new_lower_value
+          new_lower_value_rows.push(row)
         end
       end
       
@@ -729,9 +734,9 @@ binding.pry
         # new_upper_value_rows.push(row["id"])
         # new_upper_value = parameter[:correspond][row[new_param[:param][:name]]]
         # new_upper_bit = row[new_param[:param][:name]]
-        new_upper_value_rows.push(row["row"])
-        new_upper_value = row["row"][name]["value"]
-        new_upper_bit = row["row"][name]["bit"]
+        new_upper_value_rows.push(row)
+        new_upper_value = row[name]["value"]
+        new_upper_bit = row[name]["bit"]
       else
         # if new_upper_value < parameter[:correspond][row[new_param[:param][:name]]]
         #   new_upper_value_rows.clear
@@ -741,13 +746,13 @@ binding.pry
         # elsif new_upper_value == parameter[:correspond][row[new_param[:param][:name]]]
         #   new_upper_value_rows.push(row["id"])
         # end
-        if new_upper_value < row["row"][name]["value"]
+        if new_upper_value < row[name]["value"]
           new_upper_value_rows.clear
-          new_upper_value_rows.push(row["row"])
-          new_upper_value = row["row"][name]["value"]
-          new_upper_bit = row["row"][name]["bit"]
-        elsif row["row"][name]["value"] == old_upper_value
-          new_upper_value_rows.push(row["row"])
+          new_upper_value_rows.push(row)
+          new_upper_value = row[name]["value"]
+          new_upper_bit = row[name]["bit"]
+        elsif row[name]["value"] == old_upper_value
+          new_upper_value_rows.push(row)
         end
       end
     }
