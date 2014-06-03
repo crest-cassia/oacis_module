@@ -30,6 +30,45 @@ class OrthogonalController #< ApplicationController
 	def destroy
   end
 
+  #
+  def add_copied_table(name)
+    logon_doe_DB
+
+    Orthogonal.each do |o_row|
+      copied_row = o_row.dup.row
+      tmp = o_row.row
+      tmp[name]["bit"] = "0#{bit}"
+      o_row.update_attributes!(row: tmp)
+      o_row.save
+
+      copied_row[name]["bit"] = "1#{bit}"
+      copied_row[name]["value"] = nil
+      o_table = Orthogonal.create!(row: copied_row)
+      o_table.save!
+    end
+
+    leave_doe_DB
+  end
+
+  #
+  def assign_parameter_to_table(name, correspond)
+    logon_doe_DB
+
+    orthogonal_rows = Orthogonal.where("row.#{name}.bit" => correspond["bit"])
+    orthogonal_rows.count
+    if !orthogonal_rows.nil?
+      orthogonal_rows.each do |o_row|
+        tmp = orthogonal_row.row
+        tmp["#{name}"]["value"] = correspond["value"]
+        orthogonal_row.update_attributes!(row: tmp)
+        orthogonal_row.save
+      end
+    end
+
+    leave_doe_DB
+  end
+
+
   # 
   def find_rows(condition)
   	logon_doe_DB
@@ -40,6 +79,15 @@ class OrthogonalController #< ApplicationController
   	leave_doe_DB
 
   	return ret
+  end
+
+  #
+  def get_size
+    logon_doe_DB
+    size = Orthogonal.count
+    leave_doe_DB
+
+    return size
   end
 
   # 

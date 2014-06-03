@@ -756,6 +756,36 @@ binding.pry
     additional_size = new_variables - variables
     old_digit_num = correspond[0]["bit"].size
     digit_num = Math.log2(variables.size + additional_size)
+
+    if old_digit_num < digit_num # extend orthogonal table
+      # 1) get length of table
+      old_size = @orthogonal_controller.get_size
+      # 2) update assigned bit_strings to parameter in correspond
+      new_correspond = update_correspond_bit_string(correspond, digit_num, old_digit_num, old_size)
+      # 4) update bit strings in mongo
+      @orthogonal_controller.add_copied_table(name)
+      
+      
+      # 4.1) unassigned bit_string indicate value as "nil" 
+      
+    end
+      link_parameter
+    # 
+binding.pry
+  end
+
+  # 
+  def update_correspond_bit_string(correspond, digit_num, old_digit_num, old_level)
+    old_bit_str = "%0"+old_digit_num.to_s+"b"
+    new_bit_str = "%0"+digit_num.to_s+"b"
+    # for i in 0...old_level
+    for i in 0...(2**old_digit_num)
+      update_corr = correspond.find{|cor| cor["bit"] == old_bit_str%i }
+      correspond.delete(update_corr)
+      update_corr["bit"] = new_bit_str%i
+      corresponds.push(update_corr)
+    end
+    return correspond
   end
 
   # TODO: 
@@ -817,7 +847,7 @@ binding.pry
           else
             h[new_param[0]] = "0"
           end
-        else#med => error
+        else # error
           raise "parameter creation is error"
           # p add_parameters
           # pp @parameters[name]
@@ -826,15 +856,15 @@ binding.pry
     else
       raise "new parameter could not be assigned to bit on orthogonal table"
     end
+
     old_level = correspond.size
     param_defs += add_parameters
     link_parameter(name, h)
     # binding.pry if @debugFlag
-    
   end
 
   # 
-  def link_parameter
+  def link_parameter()
     digit_num = log2(param_defs.size).ceil
     old_level = param_defs.size - paramDefs_hash.size
     top = param_defs.size
@@ -886,8 +916,7 @@ if __FILE__ == $0
           {"bit"=>"10","value"=>2},
           {"bit"=>"11","value"=>3}
         ]
-binding.pry        
-  exit(0)
+binding.pry
 
   xot = ExtensibleOrthogonalTable.new
   xot.test_query
