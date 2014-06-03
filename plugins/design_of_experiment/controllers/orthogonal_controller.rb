@@ -65,10 +65,11 @@ class OrthogonalController #< ApplicationController
     if !orthogonal_rows.nil?
       orthogonal_rows.each do |o_row|
         if o_row.row[name]["bit"]
-        tmp = orthogonal_row.row
-        tmp[name]["value"] = correspond["value"]
-        orthogonal_row.update_attributes!(row: tmp)
-        orthogonal_row.save
+          tmp = orthogonal_row.row
+          tmp[name]["value"] = correspond["value"]
+          orthogonal_row.update_attributes!(row: tmp)
+          orthogonal_row.save
+        end
       end
     end
 

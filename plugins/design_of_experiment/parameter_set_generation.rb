@@ -184,7 +184,7 @@ class ParameterSetGeneration
       end
     end
     # ==========
-
+binding.pry
     # => outside
     if ps_block[:direction] != "inside"
       mean_distances.each_with_index do |mean_distance, index|
