@@ -612,22 +612,6 @@ binding.pry
   # 
   def outside_range_to_ps_block(old_rows, name, outside_range)
     return [] if outside_range.empty?
-    
-    # if new_lower_bit == new_upper_bit
-    #   if old_lower_bit[old_lower_bit.size - 1] != new_lower_bit[new_lower_bit.size - 1]
-    #     generated_area.push(old_lower_value_rows + new_lower_value_rows)
-    #   end
-    #   if old_upper_bit[old_upper_bit.size - 1] != new_upper_bit[new_upper_bit.size - 1]
-    #     generated_area.push(old_upper_value_rows + new_upper_value_rows)
-    #   end
-    # else
-    #   # between (old_lower, new_lower) in area
-    #   generated_area.push(old_lower_value_rows + new_lower_value_rows)
-    #   # between (old_upper, new_upper) in area
-    #   generated_area.push(old_upper_value_rows + new_upper_value_rows)
-    #   # (new_lower, new_upper)
-    #   # generated_area.push(new_rows.map{ |r| r["id"] })
-    # end
 
     new_rows = find_rows(name, outside_range)
     old_lu_rows, new_lu_rows = get_lower_upper_rows(old_rows, new_rows)
@@ -775,59 +759,63 @@ binding.pry
   end
 
   # TODO: 
-  def assign_parameter_to_orthogonal(name, new_param, direction)
+  def assign_parameter_to_orthogonal(correspond, name, new_param, direction)
+    min_bit = nil
+    h = {}
     case direction
     when "inside"
-      digit_num_of_minus_side = @parameters[name][:correspond].select{|k,v|
-        v < add_parameters.min
-      }.max_by{|_, v| v}
-      digit_num_of_minus_side = digit_num_of_minus_side[0]  
-      if digit_num_of_minus_side[-1] == "0"#digit_num_of_minus_side[digit_num_of_minus_side.size-1] == "0"
+      digit_num_of_minus_side = correspond.select{|cor|
+        cor["value"] < new_param.min
+      }.max_by{|cor| cor["value"]}["bit"]
+      # digit_num_of_minus_side = digit_num_of_minus_side["bit"]
+      if digit_num_of_minus_side[-1] == "0"
         count = 1
-        add_parameters.each{|v| 
+        new_param.each{|v| 
           h[v] = (count % 2).to_s
           count += 1
         }
       else
         count = 0
-        add_parameters.each{|v| 
+        new_param.each{|v| 
           h[v] = (count % 2).to_s
           count += 1
         }
       end
     when "outside"
-      if add_parameters.size == 2
-        # right_digit_of_max = @parameters[name][:correspond].max_by(&:last)[0]
-        right_digit = @parameters[name][:correspond].max_by { |item| 
-          item[1] < add_parameters.max ? item[1] : -1 
-        }[0]
-        left_digit = @parameters[name][:correspond].min_by { |item| 
-          item[1] > add_parameters.min ? item[1] : @parameters[name][:correspond].size
-        }[0]
+      if new_param.size == 2
+        right_digit = correspond.max_by { |cor| 
+          cor["value"] < new_param.max ? cor["value"] : -1 
+        }["bit"]
+        left_digit = correspond.min_by { |item| 
+          cor["value"] > new_param.min ? cor["value"] : correspond.size
+        }["bit"]
         if right_digit[-1] == "0" # [right_digit.size-1]
-          h[add_parameters.max] = "1"
+          h[new_param.max] = "1"
         else
-          h[add_parameters.max] = "0"
+          h[new_param.max] = "0"
         end
         if left_digit[-1] == "0" # [right_digit.size-1]
-          h[add_parameters.min] = "1"
+          h[new_param.min] = "1"
         else
-          h[add_parameters.min] = "0"
+          h[new_param.min] = "0"
         end
-      else
-        if param_defs.max < add_parameters[0] #upper
-          right_digit_of_max = @parameters[name][:correspond].max_by(&:last)[0]
-          if right_digit_of_max[-1] == "0" #[right_digit_of_max.size - 1]
-            h[add_parameters[0]] = "1"
+      else # new_param.size == 1
+        # if param_defs.max < new_param[0] #upper
+        correspond_max = correspond.max_by{|cor| cor["value"]}
+        correspond_min = correspond.min_by{|cor| cor["value"]}
+        if correspond_max["value"] < new_param[0] #upper
+          right_digit_of_max = correspond_max["bit"]
+          if right_digit_of_max[-1] == "0"
+            h[new_param[0]] = "1"
           else
-            h[add_parameters[0]] = "0"
+            h[new_param[0]] = "0"
           end
-        elsif param_defs.min > add_parameters[0] #lower
-          right_digit_of_min = @parameters[name][:correspond].min_by(&:last)[0]
-          if right_digit_of_min[-1] == "0" # [right_digit_of_min.size - 1]
-            h[add_parameters[0]] = "1"
+        elsif correspond_min > new_param[0] #lower
+          right_digit_of_min = correspond_min["bit"]
+          if right_digit_of_min[-1] == "0"
+            h[new_param[0]] = "1"
           else
-            h[add_parameters[0]] = "0"
+            h[new_param[0]] = "0"
           end
         else#med => error
           raise "parameter creation is error"
@@ -838,11 +826,11 @@ binding.pry
     else
       raise "new parameter could not be assigned to bit on orthogonal table"
     end
-    old_level = param_defs.size
+    old_level = correspond.size
     param_defs += add_parameters
     link_parameter(name, h)
     # binding.pry if @debugFlag
-    @parameters[name]
+    
   end
 
   # 
@@ -893,6 +881,14 @@ end
 # for debug
 if __FILE__ == $0
 
+  cors = [{"bit"=>"00","value"=>0},
+          {"bit"=>"01","value"=>1},
+          {"bit"=>"10","value"=>2},
+          {"bit"=>"11","value"=>3}
+        ]
+binding.pry        
+  exit(0)
+
   xot = ExtensibleOrthogonalTable.new
   xot.test_query
 
@@ -918,11 +914,11 @@ if __FILE__ == $0
 
 
 	binding.pry
-arr = [0,2]
-cors = [{"bit"=>"00","value"=>0},
-        {"bit"=>"01","value"=>1},
-        {"bit"=>"10","value"=>2},
-        {"bit"=>"11","value"=>3}
-       ]
+  arr = [0, 2]
+  cors = [{"bit"=>"00","value"=>0},
+          {"bit"=>"01","value"=>1},
+          {"bit"=>"10","value"=>2},
+          {"bit"=>"11","value"=>3}
+         ]
 
 end
