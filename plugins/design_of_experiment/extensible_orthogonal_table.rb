@@ -93,7 +93,7 @@ class ExtensibleOrthogonalTable
 
 
   # 
-  def inside_ps_blocks(ps_block, index)
+  def inside_ps_blocks(ps_block, index, priority=1.0)
 
     param_name = ps_block[:keys][index]
 
@@ -228,7 +228,7 @@ class ExtensibleOrthogonalTable
     new_ps_blocks = []
     new_ranges.each do |inside_range|
       if !inside_range.empty?
-        new_ps_blocks << inside_range_to_ps_block(old_rows, param_name, inside_range)
+        new_ps_blocks << inside_range_to_ps_block(old_rows, param_name, inside_range, priority)
       end
     end
 binding.pry
@@ -236,7 +236,7 @@ binding.pry
   end
 
   # 
-  def outside_ps_block(ps_block, index)
+  def outside_ps_block(ps_block, index, priority)
     param_name = ps_block[:keys][index]
 
     v_values = ps_block[:ps].map {|ps| ps[:v][index] }
@@ -400,7 +400,7 @@ binding.pry
     if !new_range.empty?
       update_orthogonal_table(param_name, new_range, "outside")
       new_ranges.each do |outside_range|
-        new_ps_blocks << outside_range_to_ps_block(old_rows, param_name, outside_range)
+        new_ps_blocks << outside_range_to_ps_block(old_rows, param_name, outside_range, priority)
       end
     end
 
@@ -455,7 +455,7 @@ binding.pry
   end
 
   # new ranges have been assigned
-  def inside_range_to_ps_block(old_rows, name, inside_range)
+  def inside_range_to_ps_block(old_rows, name, inside_range, priority=1.0)
     return [] if inside_range.empty?
     
     # orCond = [:or]
@@ -613,23 +613,23 @@ binding.pry
     # generated_area.push(old_upper_value_rows + new_upper_value_rows)
     
     new_ps_blocks = []
-    new_ps_blocks << rows_to_ps_block(new_rows)
-    new_ps_blocks << rows_to_ps_block(old_lu_rows[0] + new_lu_rows[0])
-    new_ps_blocks << rows_to_ps_block(new_lu_rows[1] + old_lu_rows[1])
+    new_ps_blocks << rows_to_ps_block(new_rows, "inside", priority)
+    new_ps_blocks << rows_to_ps_block(old_lu_rows[0] + new_lu_rows[0], "inside", priority)
+    new_ps_blocks << rows_to_ps_block(new_lu_rows[1] + old_lu_rows[1], "inside", priority)
 
     return new_ps_blocks
   end
 
   # 
-  def outside_range_to_ps_block(old_rows, name, outside_range)
+  def outside_range_to_ps_block(old_rows, name, outside_range, priority=1.0)
     return [] if outside_range.empty?
 
     new_rows = find_rows(name, outside_range)
     old_lu_rows, new_lu_rows = get_lower_upper_rows(name, old_rows, new_rows)
 
     new_ps_blocks = []
-    new_ps_blocks << rows_to_ps_block(new_lu_rows[0] + old_lu_rows[0])
-    new_ps_blocks << rows_to_ps_block(old_lu_rows[1] + new_lu_rows[1])
+    new_ps_blocks << rows_to_ps_block(new_lu_rows[0] + old_lu_rows[0], "outside", priority)
+    new_ps_blocks << rows_to_ps_block(old_lu_rows[1] + new_lu_rows[1], "outside", priority)
 
     return new_ps_blocks
   end

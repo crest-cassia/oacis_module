@@ -178,7 +178,7 @@ class ParameterSetGeneration
         #   ps_blocks << new_ps_block
         # end
 =end
-        ps_blocks << @xot.inside_ps_blocks(ps_block, index).each do |new_ps_block|
+        ps_blocks << @xot.inside_ps_blocks(ps_block, index, mean_distance).each do |new_ps_block|
           ps_blocks << new_ps_block
         end
       end
@@ -214,7 +214,7 @@ binding.pry
         #   ps_blocks << new_ps_block
         # end
 =end
-        @xot.outside_ps_blocks(ps_block, index).each do |new_ps_block|
+        @xot.outside_ps_blocks(ps_block, index, mean_distance).each do |new_ps_block|
           ps_blocks << new_ps_block
         end
       end
