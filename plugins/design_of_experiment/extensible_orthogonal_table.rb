@@ -110,9 +110,10 @@ class ExtensibleOrthogonalTable
     old_rows = get_rows(ps_block)
 
     corresponds = @orthogonal_controller.get_parameter_correspond(param_name).uniq
-    param_defs = corresponds.map{|corr| corr["value"]}.uniq
+    param_defs = corresponds.map{|corr| corr["value"]}.uniq.compact
     existed_ps_blocks = []
     if 2 < param_defs.size
+      binding.pry
       if param_defs.find{|v| old_range.min < v && v < old_range.max}.nil?
         min_bit, max_bit = nil, nil
 
@@ -223,6 +224,7 @@ class ExtensibleOrthogonalTable
                      new_range, 
                      [new_range.min, old_range.last]
                    ]
+      update_orthogonal_table(param_name, new_range, "inside")
     end
     
     new_ps_blocks = []
@@ -248,8 +250,7 @@ binding.pry
 
     old_rows = get_rows(ps_block)
     corresponds = @orthogonal_controller.get_parameter_correspond(param_name).uniq
-    param_defs = corresponds.map{|corr| corr["value"]}.uniq
-
+    param_defs = corresponds.map{|corr| corr["value"]}.uniq.compact
 
     if param_defs.any?{|v| v < old_range.min}
       candidates = corresponds.select{|cor| cor["value"] < old_range.min }
@@ -442,11 +443,12 @@ binding.pry
   # 
   def rows_to_ps_block(rows, direction, priority=1.0)
     ps_block = {}
-    ps_block[:keys] = rows[0]["row"].map{|name, corr| name }
+binding.pry
+    ps_block[:keys] = rows[0].map{|name, corr| name }
     ps_block[:ps] = []
 
     rows.each do |r|
-      ps_v = r["row"].map{|name, cor| cor["value"] }
+      ps_v = r.map{|name, cor| cor["value"] }
       ps_block[:ps] << {v: ps_v, result: nil}
     end
     ps_block[:priority] = priority
@@ -477,9 +479,7 @@ binding.pry
     #   condition.push(andCond)
     # }
     # new_rows = sql_connector.read_record(:orthogonal, condition)
-    new_rows = find_rows(name, inside_range)
-
-    
+    new_rows = find_rows(name, inside_range) 
 =begin
     old_lower_value_rows = []
     old_upper_value_rows = []
@@ -611,7 +611,7 @@ binding.pry
     # generated_area.push(old_lower_value_rows + new_lower_value_rows)
     # # between (old_upper, new_upper) in area
     # generated_area.push(old_upper_value_rows + new_upper_value_rows)
-    
+binding.pry    
     new_ps_blocks = []
     new_ps_blocks << rows_to_ps_block(new_rows, "inside", priority)
     new_ps_blocks << rows_to_ps_block(old_lu_rows[0] + new_lu_rows[0], "inside", priority)
@@ -763,10 +763,9 @@ binding.pry
   # 
   def update_orthogonal_table(name, new_variables, direction)
     correspond = @orthogonal_controller.get_parameter_correspond(name)
-    variables = correspond.map{|bit, value| value}.uniq
-    additional_size = new_variables - variables
+    variables = correspond.map{|cor| cor["value"]}.uniq
     old_digit_num = correspond[0]["bit"].size
-    digit_num = Math.log2(variables.size + additional_size)
+    digit_num = Math.log2(variables.size + new_variables.size).ceil
 
     if old_digit_num < digit_num # extend orthogonal table
       
@@ -791,7 +790,7 @@ binding.pry
       update_corr = correspond.find{|cor| cor["bit"] == old_bit_str%i }
       correspond.delete(update_corr)
       update_corr["bit"] = new_bit_str%i
-      corresponds.push(update_corr)
+      correspond.push(update_corr)
     end
     return correspond
   end
@@ -802,6 +801,7 @@ binding.pry
     h = {}
     case direction
     when "inside"
+      binding.pry
       digit_num_of_minus_side = correspond.select{|cor|
         cor["value"] < new_param.min
       }.max_by{|cor| cor["value"]}["bit"]
@@ -876,7 +876,7 @@ binding.pry
   def link_parameter(correspond, paramDefs_hash)
     added_corresponds = {}
     total_size = correspond.size + paramDefs_hash.size
-    digit_num = log2(total_size).ceil
+    digit_num = Math.log2(total_size).ceil
     old_level = correspond.size
     bit_i = 0
     while bit_i < total_size
