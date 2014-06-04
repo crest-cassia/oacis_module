@@ -137,89 +137,29 @@ class ParameterSetGeneration
     ps_blocks
   end
 
+  # 
   def new_ps_blocks_by_extOT(ps_block, mean_distances)
     ps_blocks = []
     # => inside 
     mean_distances.each_with_index do |mean_distance, index|
       if mean_distance > @module_input_data["distance_threshold"]
-=begin
-        # v_values = ps_block[:ps].map {|ps| ps[:v][index] }
-        # range = [v_values.min, v_values.max]
-        # one_third = range[0]*2 / 3 + range[1]   /3
-        # two_third = range[0]   / 3 + range[1]*2 /3
-        # one_third = one_third.round(6) if one_third.is_a?(Float)
-        # two_third = two_third.round(6) if two_third.is_a?(Float)
-        # ranges = [
-        #   [range.first, one_third], [one_third, two_third], [two_third, range.last]
-        # ]
-
-        # old_row_set = []
-        # ranges.each do |r|
-        #   old_rows = @xot.is_alredy_block_include_range({ps_block[:keys][index] => r})
-        #   if !old_rows.empty?
-        #     @xot.get_rows(ps_block)
-        #     binding.pry
-        #   end  
-        # end
-        
-        
-        # range_hash = ps_block_to_range_hash(ps_block) <- modify
-        # range_hash = @xot.inside_range_hash(ps_block, index)
-
-        # ranges.each do |r|
-        #   range_hash[ps_block[:keys][index]] = r
-        #   ps = get_parameter_values_from_range_hash(range_hash)
-        #   # get_parameter_values_from_range_hash_extOT(range_hash) <- modified method
-        #   new_ps_block = {}
-        #   new_ps_block[:keys] = ps_block[:keys]
-        #   new_ps_block[:priority] = mean_distance
-        #   new_ps_block[:direction] = "inside"
-        #   new_ps_block[:ps] = ps.map {|p| {v: p}}
-        #   ps_blocks << new_ps_block
-        # end
-=end
-        ps_blocks << @xot.inside_ps_blocks(ps_block, index, mean_distance).each do |new_ps_block|
+        @xot.inside_ps_blocks(ps_block, index, mean_distance).each do |new_ps_block|
           ps_blocks << new_ps_block
         end
       end
     end
     # ==========
-binding.pry
+
     # => outside
     if ps_block[:direction] != "inside"
       mean_distances.each_with_index do |mean_distance, index|
-=begin
-        # v_values = ps_block[:ps].map {|ps| ps[:v][index] }
-        # range = [v_values.min, v_values.max]
-
-        # lower = range[0] - @step_size[ps_block[:keys][index]]
-        # upper = range[1] + @step_size[ps_block[:keys][index]]
-        # lower = lower.round(6) if lower.is_a?(Float)
-        # upper = upper.round(6) if upper.is_a?(Float)
-        # ranges = [
-        #   [lower, range.first], [range.last, upper]
-        # ]
-
-        # # range_hash = ps_block_to_range_hash(ps_block) <- modify
-
-        # ranges.each do |r|
-        #   range_hash[ps_block[:keys][index]] = r
-        #   ps = get_parameter_values_from_range_hash(range_hash)
-        #   # get_parameter_values_from_range_hash_extOT(range_hash)
-        #   new_ps_block = {}
-        #   new_ps_block[:keys] = ps_block[:keys]
-        #   new_ps_block[:priority] = mean_distance
-        #   new_ps_block[:direction] = "outside"
-        #   new_ps_block[:ps] = ps.map {|p| {v: p}}
-        #   ps_blocks << new_ps_block
-        # end
-=end
         @xot.outside_ps_blocks(ps_block, index, mean_distance).each do |new_ps_block|
           ps_blocks << new_ps_block
         end
       end
     end
     # ==========
+binding.pry
     ps_blocks
   end
 

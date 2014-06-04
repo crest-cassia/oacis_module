@@ -68,7 +68,7 @@ class OrthogonalController #< ApplicationController
         end
       end
     end
-binding.pry    
+    
     leave_doe_DB
   end
 

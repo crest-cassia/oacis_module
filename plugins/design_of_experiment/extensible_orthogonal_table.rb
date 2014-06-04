@@ -54,24 +54,7 @@ class ExtensibleOrthogonalTable
     end
   end
 
-  #  == unused ? ===
-  def is_alredy_block_include_range(range) # name, value
-    condition = {"$or" => [] }
-    range.each do |key, values|
-    	values.each do |v|
-    		condition["$or"] << {"row.#{key}.value" => v}
-    	end
-    end
-
-    rows = @orthogonal_controller.find_rows(condition)
-    
-    if rows.count > 0
-    	return rows.map { |r| r["row"]  }
-    else
-    	return []
-    end
-  end
-
+  # 
   def is_alredy_block_include_range_hash(range_hash)
     and_condition = {"$and" => [] }
     range_hash.each do |name, range|
@@ -211,39 +194,39 @@ class ExtensibleOrthogonalTable
           end
         else
           new_range.sort!
-          new_ranges = [  [old_range.first, new_range.max], 
+          new_ranges = [  [old_range.min, new_range.min], 
                           new_range, 
-                          [new_range.min, old_range.last]
+                          [new_range.max, old_range.max]
                         ]
-          update_orthogonal_table(param_name, new_range, "inside")
+          update_orthogonal_table(corresponds, param_name, new_range, "inside")
         end
       end
     else
-      new_ranges = [ [old_range.first, new_range.max], 
+      new_ranges = [ [old_range.min, new_range.min], 
                      new_range, 
-                     [new_range.min, old_range.last]
+                     [new_range.max, old_range.max]
                    ]
-      update_orthogonal_table(param_name, new_range, "inside")
+      update_orthogonal_table(corresponds, param_name, new_range, "inside")
     end
     
     new_ps_blocks = []
     new_ranges.each do |inside_range|
       if !inside_range.empty?
-        new_ps_blocks << inside_range_to_ps_block(old_rows, param_name, inside_range, priority)
+        new_ps_block = range_to_ps_block(param_name, inside_range, "inside", priority)
+        new_ps_blocks << new_ps_block if !new_ps_block.empty?
       end
     end
-binding.pry
+
     return new_ps_blocks + existed_ps_blocks
   end
 
   # 
-  def outside_ps_block(ps_block, index, priority)
+  def outside_ps_blocks(ps_block, index, priority)
     param_name = ps_block[:keys][index]
 
-    v_values = ps_block[:ps].map {|ps| ps[:v][index] }
-    old_range = [v_values.min, v_values.max]
-    lower = range[0] - @module_input_data["step_size"][ps_block[:keys][index]]
-    upper = range[1] + @module_input_data["step_size"][ps_block[:keys][index]]
+    old_range = ps_block[:ps].map {|ps| ps[:v][index] }.uniq
+    lower = old_range.min - @module_input_data["step_size"][ps_block[:keys][index]]
+    upper = old_range.max + @module_input_data["step_size"][ps_block[:keys][index]]
     lower = lower.round(6) if lower.is_a?(Float)
     upper = upper.round(6) if upper.is_a?(Float)
 
@@ -261,12 +244,9 @@ binding.pry
       lower = candidates.max if lower.nil?
     elsif lower < @module_input_data["_managed_parameters"][index]["range"].min
       lower = @module_input_data["_managed_parameters"][index]["range"].min
-    else
-      lower = lower - @module_input_data["step_size"][param_name]
-      lower = lower.round(6)if new_lower.class == Float
     end
 
-    if param_defs.any?{|v| old_range.min < v}
+    if param_defs.any?{|v| old_range.max < v}
       candidates = corresponds.select{|cor| old_range.max < cor["value"] }
       tmp_cor = corresponds.find{|cor| cor["value"] == old_range.max }
       candidates = candidates.select{|cor| cor["bit"][-1] != tmp_cor["bit"][-1]}
@@ -274,73 +254,32 @@ binding.pry
       upper = candidates.min_by{|v| 
         (v - (old_range.max + @module_input_data["step_size"][param_name])).abs }
       upper = candidates.min if upper.nil?
-    elsif upper < @module_input_data["_managed_parameters"][index]["range"].max
+    elsif @module_input_data["_managed_parameters"][index]["range"].max < upper
       upper = @module_input_data["_managed_parameters"][index]["range"].max
-    else
-      upper = upper + @module_input_data["step_size"][param_name]
-      upper = upper.round(6)if new_lower.class == Float
     end
 
     new_range = [lower, upper]
     new_ranges = []
-    # ranges = [ [lower, old_range.min], [old_range.max, upper] ]
-    # lower_range = [lower, old_range.min]
-    # upper_range = [old_range.max, upper]
 
 
     existed_ps_blocks = []
     if 2 < param_defs.size
-      # if param_defs.include?(new_array.min) ||
-      #   !(tmp = near_value(new_array.min, param_defs, name, definition)).nil?
-      #   min_bit = corresponds.key(new_array.min)
-      #   new_array.delete(new_array.min)
-      # end
-      # if param_defs.include?(new_array.max) ||
-      #   !(tmp = near_value(new_array.max, param_defs, name, definition)).nil?
-      #   max_bit = parameters[name][:correspond].key(new_array.max)
-      #   new_array.delete(new_array.max)
-      # end
       if param_defs.include?(lower)
         min_bit = corresponds.find{|cor| cor["value"] == lower}
         new_range.delete(lower)
-        # lower_range.clear
       elsif !(near_lower = near_value(lower, param_defs, param_name)).nil?
         min_bit = corresponds.find{|cor| cor["value"] == near_lower}
         new_range.delete(lower)
-        # lower_range.clear
       end
       if param_defs.include?(upper)
         max_bit = corresponds.find{|cor| cor["value"] == upper}
         new_range.delete(upper)
-        # upper_range.clear
       elsif !(near_upper = near_value(upper, param_defs, param_name)).nil?
         max_bit = corresponds.find{|cor| cor["value"] == near_upper}
         new_range.delete(upper)
-        # upper_range.clear
       end
       
-      # if !min_bit.nil?
-      #   pmin_bit = parameters[name][:correspond].key(param.min)
-      #   condition = [:or]
-      #   orCond = [:or, [:eq, [:field, name], min_bit], [:eq, [:field, name], pmin_bit]]
-      #   orthogonal_rows.each{|row|
-      #     andCond = [:and]
-      #     row.each{ |k, v|
-      #       if k != "id" and k != "run" and k != name and !v.nil?
-      #         andCond.push([:eq, [:field, k], v])
-      #       end
-      #     }
-      #     andCond.push(orCond)
-      #     condition.push(andCond)
-      #   }
-      #   exist_area = sql_connector.read_record(:orthogonal, condition) # nil check is easier maybe
-      #   new_area.push(exist_area.map{|r| r["id"]})
-      # end
       if !min_bit.nil?
-        # pmin_cor = corresponds.find{|cor| cor["value"] == old_range.min}
-        # condition = {"row.#{param_name}.value" => old_range.min}
-        # rows = @orthogonal_controller.find_rows(condition)
-        # old_lower_bit = corresponds.find{|cor| cor["value"] == old_range.min}["bit"]
         condition = {"$or" => []}
         or_condition = {"$or" => [{"row.#{param_name}.value" => min_bit}, {"row.#{param_name}.value" => old_range.min}]}#{"row.#{param_name}.bit" => old_lower_bit}]}
         and_condition = {"$and" => []}
@@ -359,23 +298,6 @@ binding.pry
         new_ranges << [lower, old_range.min]
       end
 
-      # if !max_bit.nil?
-      #   pmax_bit = parameters[name][:correspond].key(param.max)
-      #   condition = [:or]
-      #   orCond = [:or, [:eq, [:field, name], max_bit], [:eq, [:field, name], pmax_bit]]
-      #   orthogonal_rows.each{|row|
-      #     andCond = [:and]
-      #     row.each{ |k, v|
-      #       if k != "id" and k != "run" and k != name and !v.nil?
-      #         andCond.push([:eq, [:field, k], v])
-      #       end
-      #     }
-      #     andCond.push(orCond)
-      #     condition.push(andCond)
-      #   }
-      #   exist_area = sql_connector.read_record(:orthogonal, condition) # nil check is easier maybe
-      #   new_area.push(exist_area.map{|r| r["id"]})
-      # end
       if !max_bit.nil?
         condition = {"$or" => []}
         or_condition = {"$or" => [{"row.#{param_name}.value" => max_bit}, {"row.#{param_name}.value" => old_range.max}]}#{"row.#{param_name}.bit" => old_lower_bit}]}
@@ -398,20 +320,19 @@ binding.pry
     
     new_ps_blocks = []
     if !new_range.empty?
-      update_orthogonal_table(param_name, new_range, "outside")
+      update_orthogonal_table(corresponds, param_name, new_range, "outside")
       new_ranges.each do |outside_range|
-        new_ps_blocks << outside_range_to_ps_block(old_rows, param_name, outside_range, priority)
+        new_ps_block = range_to_ps_block(param_name, outside_range, "outside", priority)
+        new_ps_blocks << new_ps_block if !new_ps_block.empty?
       end
     end
 
-binding.pry
     return new_ps_blocks + existed_ps_blocks
   end
 
   def test_query
     @orthogonal_controller.test_query
   end
-
 
 	private
   # 
@@ -442,7 +363,6 @@ binding.pry
   # 
   def rows_to_ps_block(rows, direction, priority=1.0)
     ps_block = {}
-binding.pry
     ps_block[:keys] = rows[0].map{|name, corr| name }
     ps_block[:ps] = []
 
@@ -455,313 +375,16 @@ binding.pry
     ps_block
   end
 
-  # new ranges have been assigned
-  def inside_range_to_ps_block(old_rows, name, inside_range, priority=1.0)
-    return [] if inside_range.empty?
-    
-    # orCond = [:or]
-    # new_param[:param][:paramDefs].each{|v|
-    #   bit = parameter[:correspond].key(v)
-    #   new_bits.push(bit)
-    #   orCond.push([:eq, [:field, new_param[:param][:name]], bit])
-    # }
-
-    # condition = [:or]
-    # old_rows.each {|r|
-    #   andCond = [:and]
-    #   r.each{|k, v|
-    #     if k != "id" and k != "run" and k != new_param[:param][:name]
-    #       andCond.push([:eq, [:field, k], v])
-    #     end
-    #   }
-    #   andCond.push(orCond)
-    #   condition.push(andCond)
-    # }
-    # new_rows = sql_connector.read_record(:orthogonal, condition)
-    new_rows = find_rows(name, inside_range) 
-=begin
-    old_lower_value_rows = []
-    old_upper_value_rows = []
-    old_lower_value = nil
-    old_upper_value = nil
-    old_lower_bit = nil
-    old_upper_bit = nil
-    old_rows.each{ |row|
-      if old_lower_value.nil? # old lower parameter
-        # old_lower_value_rows.push(row["id"])
-        # old_lower_value = parameter[:correspond][row[new_param[:param][:name]]]
-        # old_lower_bit = row[new_param[:param][:name]]
-        old_lower_value_rows.push(row["_id"])
-        old_lower_value = row["row"][name]["value"]
-        old_lower_bit = row["row"][name]["bit"]
-      else
-        # if parameter[:correspond][row[new_param[:param][:name]]] < old_lower_value
-        #   old_lower_value_rows.clear
-        #   old_lower_value_rows.push(row["id"])
-        #   old_lower_value = parameter[:correspond][row[new_param[:param][:name]]]
-        #   old_lower_bit = row[new_param[:param][:name]]
-        # elsif parameter[:correspond][row[new_param[:param][:name]]] == old_lower_value
-        #   old_lower_value_rows.push(row["id"])
-        # end
-        if row["row"][name]["value"] < old_lower_value
-          old_lower_value_rows.clear
-          old_lower_value_rows.push(row["_id"])
-          old_lower_value = row["row"][name]["value"]
-          old_lower_bit = row["row"][name]["bit"]
-        elsif row["row"][name]["value"] == old_lower_value
-          old_lower_value_rows.push(row["_id"])
-        end
-      end
-      
-      if old_upper_value.nil? # old upper parameter
-        # old_upper_value_rows.push(row["id"])
-        # old_upper_value = parameter[:correspond][row[new_param[:param][:name]]]
-        # old_upper_bit = row[new_param[:param][:name]]
-        old_upper_value_rows.push(row["_id"])
-        old_upper_value = row["row"][name]["value"]
-        old_upper_bit = row["row"][name]["bit"]
-      else
-        # if old_upper_value < parameter[:correspond][row[new_param[:param][:name]]]
-        #   old_upper_value_rows.clear
-        #   old_upper_value_rows.push(row["id"])
-        #   old_upper_value = parameter[:correspond][row[new_param[:param][:name]]]
-        #   old_upper_bit = row[new_param[:param][:name]]
-        # elsif old_upper_value == parameter[:correspond][row[new_param[:param][:name]]]
-        #   old_upper_value_rows.push(row["id"])
-        # end
-        if old_upper_value < row["row"][name]["value"]
-          old_upper_value_rows.clear
-          old_upper_value_rows.push(row["_id"])
-          old_upper_value = row["row"][name]["value"]
-          old_upper_bit = row["row"][name]["bit"]
-        elsif row["row"][name]["value"] == old_upper_value
-          old_upper_value_rows.push(row["_id"])
-        end
-      end
-    }
-
-    new_lower_value_rows = []
-    new_upper_value_rows = []
-    new_lower_value = nil
-    new_upper_value = nil
-    new_lower_bit = nil
-    new_upper_bit = nil
-    new_rows.each{ |row|
-      if new_lower_value.nil? # new lower parameter
-        # new_lower_value_rows.push(row["id"])
-        # new_lower_value = parameter[:correspond][row[new_param[:param][:name]]]
-        # new_lower_bit = row[new_param[:param][:name]]
-        new_lower_value_rows.push(row["_id"])
-        new_lower_value = row["row"][name]["value"]
-        new_lower_bit = row["row"][name]["bit"]
-      else
-        # if parameter[:correspond][row[new_param[:param][:name]]] < new_lower_value
-        #   new_lower_value_rows.clear
-        #   new_lower_value_rows.push(row["id"])
-        #   new_lower_value = parameter[:correspond][row[new_param[:param][:name]]]
-        #   new_lower_bit = row[new_param[:param][:name]]
-        # elsif parameter[:correspond][row[new_param[:param][:name]]] == new_lower_value
-        #   new_lower_value_rows.push(row["id"])
-        # end
-        if row["row"][name]["value"] < new_lower_value
-          new_lower_value_rows.clear
-          new_lower_value_rows.push(row["_id"])
-          new_lower_value = row["row"][name]["value"]
-          new_lower_bit = row["row"][name]["bit"]
-        elsif row["row"][name]["value"] == new_lower_value
-          new_lower_value_rows.push(row["_id"])
-        end
-      end
-      
-      if new_upper_value.nil? # new upper parameter
-        # new_upper_value_rows.push(row["id"])
-        # new_upper_value = parameter[:correspond][row[new_param[:param][:name]]]
-        # new_upper_bit = row[new_param[:param][:name]]
-        new_upper_value_rows.push(row["_id"])
-        new_upper_value = row["row"][name]["value"]
-        new_upper_bit = row["row"][name]["bit"]
-      else
-        # if new_upper_value < parameter[:correspond][row[new_param[:param][:name]]]
-        #   new_upper_value_rows.clear
-        #   new_upper_value_rows.push(row["id"])
-        #   new_upper_value = parameter[:correspond][row[new_param[:param][:name]]]
-        #   new_upper_bit = row[new_param[:param][:name]]
-        # elsif new_upper_value == parameter[:correspond][row[new_param[:param][:name]]]
-        #   new_upper_value_rows.push(row["id"])
-        # end
-        if new_upper_value < row["row"][name]["value"]
-          new_upper_value_rows.clear
-          new_upper_value_rows.push(row["_id"])
-          new_upper_value = row["row"][name]["value"]
-          new_upper_bit = row["row"][name]["bit"]
-        elsif row["row"][name]["value"] == old_upper_value
-          new_upper_value_rows.push(row["_id"])
-        end
-      end
-    }
-=end
-binding.pry    
-    old_lu_rows, new_lu_rows = get_lower_upper_rows(name, old_rows, new_rows)
-    
-    # generated_area = []
-    # # (new_lower, new_upper)
-    # generated_area.push(new_rows.map{ |r| r["id"] })
-    # # between (old_lower, new_lower) in area
-    # generated_area.push(old_lower_value_rows + new_lower_value_rows)
-    # # between (old_upper, new_upper) in area
-    # generated_area.push(old_upper_value_rows + new_upper_value_rows)
-binding.pry    
-    new_ps_blocks = []
-    new_ps_blocks << rows_to_ps_block(new_rows, "inside", priority)
-    new_ps_blocks << rows_to_ps_block(old_lu_rows[0] + new_lu_rows[0], "inside", priority)
-    new_ps_blocks << rows_to_ps_block(new_lu_rows[1] + old_lu_rows[1], "inside", priority)
-
-    return new_ps_blocks
+  # 
+  def range_to_ps_block(name, range, direction, priority=1.0)
+    return [] if range.empty?
+    new_rows = find_rows(name, range)
+    return rows_to_ps_block(new_rows, direction, priority)    
   end
 
   # 
-  def outside_range_to_ps_block(old_rows, name, outside_range, priority=1.0)
-    return [] if outside_range.empty?
-
-    new_rows = find_rows(name, outside_range)
-    old_lu_rows, new_lu_rows = get_lower_upper_rows(name, old_rows, new_rows)
-
-    new_ps_blocks = []
-    new_ps_blocks << rows_to_ps_block(new_lu_rows[0] + old_lu_rows[0], "outside", priority)
-    new_ps_blocks << rows_to_ps_block(old_lu_rows[1] + new_lu_rows[1], "outside", priority)
-
-    return new_ps_blocks
-  end
-
-  # 
-  def get_lower_upper_rows(name, old_rows, new_rows)
-
-    old_lower_value_rows = []
-    old_upper_value_rows = []
-    old_lower_value = nil
-    old_upper_value = nil
-    old_lower_bit = nil
-    old_upper_bit = nil
-    old_rows.each{ |row|
-      if old_lower_value.nil? # old lower parameter
-        # old_lower_value_rows.push(row["id"])
-        # old_lower_value = parameter[:correspond][row[new_param[:param][:name]]]
-        # old_lower_bit = row[new_param[:param][:name]]
-        old_lower_value_rows.push(row)
-        old_lower_value = row[name]["value"]
-        old_lower_bit = row[name]["bit"]
-      else
-        # if parameter[:correspond][row[new_param[:param][:name]]] < old_lower_value
-        #   old_lower_value_rows.clear
-        #   old_lower_value_rows.push(row["id"])
-        #   old_lower_value = parameter[:correspond][row[new_param[:param][:name]]]
-        #   old_lower_bit = row[new_param[:param][:name]]
-        # elsif parameter[:correspond][row[new_param[:param][:name]]] == old_lower_value
-        #   old_lower_value_rows.push(row["id"])
-        # end
-        if row[name]["value"] < old_lower_value
-          old_lower_value_rows.clear
-          old_lower_value_rows.push(row)
-          old_lower_value = row[name]["value"]
-          old_lower_bit = row[name]["bit"]
-        elsif row[name]["value"] == old_lower_value
-          old_lower_value_rows.push(row)
-        end
-      end
-      
-      if old_upper_value.nil? # old upper parameter
-        # old_upper_value_rows.push(row["id"])
-        # old_upper_value = parameter[:correspond][row[new_param[:param][:name]]]
-        # old_upper_bit = row[new_param[:param][:name]]
-        old_upper_value_rows.push(row)
-        old_upper_value = row[name]["value"]
-        old_upper_bit = row[name]["bit"]
-      else
-        # if old_upper_value < parameter[:correspond][row[new_param[:param][:name]]]
-        #   old_upper_value_rows.clear
-        #   old_upper_value_rows.push(row["id"])
-        #   old_upper_value = parameter[:correspond][row[new_param[:param][:name]]]
-        #   old_upper_bit = row[new_param[:param][:name]]
-        # elsif old_upper_value == parameter[:correspond][row[new_param[:param][:name]]]
-        #   old_upper_value_rows.push(row["id"])
-        # end
-        if old_upper_value < row[name]["value"]
-          old_upper_value_rows.clear
-          old_upper_value_rows.push(row)
-          old_upper_value = row[name]["value"]
-          old_upper_bit = row[name]["bit"]
-        elsif row[name]["value"] == old_upper_value
-          old_upper_value_rows.push(row)
-        end
-      end
-    }
-
-    new_lower_value_rows = []
-    new_upper_value_rows = []
-    new_lower_value = nil
-    new_upper_value = nil
-    new_lower_bit = nil
-    new_upper_bit = nil
-    new_rows.each{ |row|
-      if new_lower_value.nil? # new lower parameter
-        # new_lower_value_rows.push(row["id"])
-        # new_lower_value = parameter[:correspond][row[new_param[:param][:name]]]
-        # new_lower_bit = row[new_param[:param][:name]]
-        new_lower_value_rows.push(row)
-        new_lower_value = row[name]["value"]
-        new_lower_bit = row[name]["bit"]
-      else
-        # if parameter[:correspond][row[new_param[:param][:name]]] < new_lower_value
-        #   new_lower_value_rows.clear
-        #   new_lower_value_rows.push(row["id"])
-        #   new_lower_value = parameter[:correspond][row[new_param[:param][:name]]]
-        #   new_lower_bit = row[new_param[:param][:name]]
-        # elsif parameter[:correspond][row[new_param[:param][:name]]] == new_lower_value
-        #   new_lower_value_rows.push(row["id"])
-        # end
-        if row[name]["value"] < new_lower_value
-          new_lower_value_rows.clear
-          new_lower_value_rows.push(row)
-          new_lower_value = row[name]["value"]
-          new_lower_bit = row[name]["bit"]
-        elsif row[name]["value"] == new_lower_value
-          new_lower_value_rows.push(row)
-        end
-      end
-      
-      if new_upper_value.nil? # new upper parameter
-        # new_upper_value_rows.push(row["id"])
-        # new_upper_value = parameter[:correspond][row[new_param[:param][:name]]]
-        # new_upper_bit = row[new_param[:param][:name]]
-        new_upper_value_rows.push(row)
-        new_upper_value = row[name]["value"]
-        new_upper_bit = row[name]["bit"]
-      else
-        # if new_upper_value < parameter[:correspond][row[new_param[:param][:name]]]
-        #   new_upper_value_rows.clear
-        #   new_upper_value_rows.push(row["id"])
-        #   new_upper_value = parameter[:correspond][row[new_param[:param][:name]]]
-        #   new_upper_bit = row[new_param[:param][:name]]
-        # elsif new_upper_value == parameter[:correspond][row[new_param[:param][:name]]]
-        #   new_upper_value_rows.push(row["id"])
-        # end
-        if new_upper_value < row[name]["value"]
-          new_upper_value_rows.clear
-          new_upper_value_rows.push(row)
-          new_upper_value = row[name]["value"]
-          new_upper_bit = row[name]["bit"]
-        elsif row[name]["value"] == old_upper_value
-          new_upper_value_rows.push(row)
-        end
-      end
-    }
-
-    return [[old_lower_value_rows, old_upper_value_rows], [new_lower_value_rows, new_upper_value_rows]]
-  end
-
-  # 
-  def update_orthogonal_table(name, new_variables, direction)
-    corresponds = @orthogonal_controller.get_parameter_correspond(name)
+  def update_orthogonal_table(corresponds, name, new_variables, direction)#(name, new_variables, direction)
+    # corresponds = @orthogonal_controller.get_parameter_correspond(name)
     variables = corresponds.map{|cor| cor["value"]}.uniq
     old_digit_num = corresponds[0]["bit"].size
     digit_num = Math.log2(variables.size + new_variables.size).ceil
@@ -776,8 +399,6 @@ binding.pry
     end
 
     assign_parameter_to_orthogonal(corresponds, name, new_variables, direction)
-    
-binding.pry
   end
 
   # 
@@ -820,15 +441,15 @@ binding.pry
         right_digit = corresponds.max_by { |cor| 
           cor["value"] < new_param.max ? cor["value"] : -1 
         }["bit"]
-        left_digit = corresponds.min_by { |item| 
+        left_digit = corresponds.min_by { |cor| 
           cor["value"] > new_param.min ? cor["value"] : corresponds.size
         }["bit"]
-        if right_digit[-1] == "0" # [right_digit.size-1]
+        if right_digit[-1] == "0"
           h[new_param.max] = "1"
         else
           h[new_param.max] = "0"
         end
-        if left_digit[-1] == "0" # [right_digit.size-1]
+        if left_digit[-1] == "0"
           h[new_param.min] = "1"
         else
           h[new_param.min] = "0"
@@ -863,7 +484,6 @@ binding.pry
 
     additional_cor = link_parameter(corresponds, h)
     @orthogonal_controller.assign_parameter_to_table(name, additional_cor)
-binding.pry
   end
 
   # 
@@ -890,12 +510,7 @@ binding.pry
       end
       bit_i += 1
     end
-    # if param_defs.size != corresponds.size
-    #   raise "no assignment parameter: 
-    #     defs_L:#{param_defs.size}, 
-    #     corr_L:#{@parameters[name][:corresponds].size}"
-    #   # binding.pry
-    # end
+
     return added_corresponds
   end
 
