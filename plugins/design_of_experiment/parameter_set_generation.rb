@@ -159,7 +159,7 @@ class ParameterSetGeneration
       end
     end
     # ==========
-binding.pry
+
     ps_blocks
   end
 

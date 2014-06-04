@@ -96,8 +96,7 @@ class ExtensibleOrthogonalTable
     param_defs = corresponds.map{|corr| corr["value"]}.uniq.compact
     existed_ps_blocks = []
     if 2 < param_defs.size
-      binding.pry
-      if param_defs.find{|v| old_range.min < v && v < old_range.max}.nil?
+      if !param_defs.find{|v| old_range.min < v && v < old_range.max}.nil?
         min_bit, max_bit = nil, nil
 
         if param_defs.include?(new_range.min)
@@ -132,6 +131,7 @@ class ExtensibleOrthogonalTable
                 min_corr = cor
               end
             }
+binding.pry
             min_bit = min_corr["bit"]
             new_range << min_corr["value"]
           end
@@ -212,11 +212,11 @@ class ExtensibleOrthogonalTable
     new_ps_blocks = []
     new_ranges.each do |inside_range|
       if !inside_range.empty?
-        new_ps_block = range_to_ps_block(param_name, inside_range, "inside", priority)
+        new_ps_block = range_to_ps_block(old_rows, param_name, inside_range, "inside", priority)
         new_ps_blocks << new_ps_block if !new_ps_block.empty?
       end
     end
-
+binding.pry if 2 < param_defs.size
     return new_ps_blocks + existed_ps_blocks
   end
 
@@ -316,13 +316,17 @@ class ExtensibleOrthogonalTable
       else
         new_ranges << [old_range.max, upper]
       end
+    else
+      new_ranges = [ [lower, old_range.min],
+                      [old_range.max, upper]
+                    ]
     end
     
     new_ps_blocks = []
     if !new_range.empty?
       update_orthogonal_table(corresponds, param_name, new_range, "outside")
       new_ranges.each do |outside_range|
-        new_ps_block = range_to_ps_block(param_name, outside_range, "outside", priority)
+        new_ps_block = range_to_ps_block(old_rows, param_name, outside_range, "outside", priority)        
         new_ps_blocks << new_ps_block if !new_ps_block.empty?
       end
     end
@@ -376,10 +380,29 @@ class ExtensibleOrthogonalTable
   end
 
   # 
-  def range_to_ps_block(name, range, direction, priority=1.0)
+  def range_to_ps_block(old_rows, name, range, direction, priority=1.0)
     return [] if range.empty?
-    new_rows = find_rows(name, range)
-    return rows_to_ps_block(new_rows, direction, priority)    
+
+    condition = {"$and" => []}
+
+    condition["$and"] << {"$or" => range.map{|v| {"row.#{name}.value" => v}} }
+
+    h = {}
+    old_rows.each{ |r|
+      r.each{|k, cor|
+        if k != name
+          h[k] ||= []
+          h[k] << cor["bit"]
+        end
+      }
+    }
+    h.each{|k,arr| arr.uniq!}
+    h.each do |k, range|
+      condition["$and"] << {"$or" => range.map{|v| {"row.#{k}.bit" => v}} }
+    end
+    new_rows = @orthogonal_controller.find_rows(condition).map{|r| r.row}
+
+    return rows_to_ps_block(new_rows, direction, priority)
   end
 
   # 
