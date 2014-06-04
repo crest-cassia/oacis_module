@@ -43,7 +43,7 @@ class ExtensibleOrthogonalTable
     return checked_rows[:duplicate]
   end
 
-
+  # 
   def find_rows(name, range)
     condition = {"$or" => range.map{|v| {"row.#{name}.value" => v}} }
     rows = @orthogonal_controller.find_rows(condition)
@@ -131,7 +131,6 @@ class ExtensibleOrthogonalTable
                 min_corr = cor
               end
             }
-binding.pry
             min_bit = min_corr["bit"]
             new_range << min_corr["value"]
           end
@@ -152,46 +151,19 @@ binding.pry
         end
 
         if (!min_bit.nil? && !max_bit.nil?)  # <- already assigned parameters are existed
+          new_ranges = [  [old_range.min, new_range.min], 
+                          new_range, 
+                          [new_range.max, old_range.max]
+                        ]
+          range_to_ps_block(old_rows, param_name, new_range, "inside", priority)
+          new_ranges.each do |inside_range|
+            if !inside_range.empty?
+              new_ps_block = range_to_ps_block(old_rows, param_name, inside_range, "inside", priority)
+              existed_ps_blocks << new_ps_block if !new_ps_block.empty?
+            end
+          end
           new_range = []
           new_ranges = []
-          condition = {"$or" => []}
-          or_condition = {"$or" => [{"row.#{param_name}.bit" => min_bit}, {"row.#{param_name}.bit" => max_bit}]}
-          and_condition = {"$and" => []}
-          old_rows.each do |row|
-            row.each do |key, corr|
-              and_condition["$and"] << {"row.#{key}.bit" => corr["bit"]}
-            end
-          end
-          and_condition << or_condition
-          condition << and_condition
-          existed_rows = @orthogonal_controller.find_rows(condition)
-
-          if existed_rows.count > 0
-            existed_ps_blocks << rows_to_ps_block(existed_rows, ps_block[:direction], ps_block[:priority])
-            ps_blocks = [{}, {}] # generate template
-            ps_blocks.each do |ps_hash|
-              ps_block[:keys] = rows[0]["row"].map{|key, corr| key }  
-              ps_block[:ps] = []
-              ps_block[:priority] = priority
-              ps_block[:direction] = "inside"
-            end
-                
-            existed_rows.each do |row|
-              if row["row"][param_name]["bit"][-1] == "0"
-                ps_blocks[0][:ps] << row["row"].map{|key, cor| cor["value"]}
-              elsif row["row"][param_name]["bit"][-1] == "1"
-                ps_blocks[1][:ps] << row["row"].map{|key, cor| cor["value"]}
-              end
-            end
-            old_rows.each do |row|
-              if row["row"][param_name]["bit"][-1] == "1"
-                ps_blocks[0][:ps] << row["row"].map{|key, cor| cor["value"]}
-              elsif row["row"][param_name]["bit"][-1] == "0"
-                ps_blocks[1][:ps] << row["row"].map{|key, cor| cor["value"]}
-              end
-            end
-            existed_ps_blocks += ps_blocks
-          end
         else
           new_range.sort!
           new_ranges = [  [old_range.min, new_range.min], 
@@ -200,6 +172,12 @@ binding.pry
                         ]
           update_orthogonal_table(corresponds, param_name, new_range, "inside")
         end
+      else
+        new_ranges = [ [old_range.min, new_range.min], 
+                     new_range, 
+                     [new_range.max, old_range.max]
+                   ]
+        update_orthogonal_table(corresponds, param_name, new_range, "inside")  
       end
     else
       new_ranges = [ [old_range.min, new_range.min], 
@@ -216,7 +194,7 @@ binding.pry
         new_ps_blocks << new_ps_block if !new_ps_block.empty?
       end
     end
-binding.pry if 2 < param_defs.size
+
     return new_ps_blocks + existed_ps_blocks
   end
 
