@@ -109,7 +109,7 @@ class ExtensibleOrthogonalTable
 
     old_rows = get_rows(ps_block)
 
-    corresponds = @orthogonal_controller.get_parameter_correspond(param_name).uniq
+    corresponds = @orthogonal_controller.get_parameter_correspond(param_name)
     param_defs = corresponds.map{|corr| corr["value"]}.uniq.compact
     existed_ps_blocks = []
     if 2 < param_defs.size
@@ -171,7 +171,6 @@ class ExtensibleOrthogonalTable
         if (!min_bit.nil? && !max_bit.nil?)  # <- already assigned parameters are existed
           new_range = []
           new_ranges = []
-          # old_rows = get_rows(ps_block)
           condition = {"$or" => []}
           or_condition = {"$or" => [{"row.#{param_name}.bit" => min_bit}, {"row.#{param_name}.bit" => max_bit}]}
           and_condition = {"$and" => []}
@@ -249,7 +248,7 @@ binding.pry
     upper = upper.round(6) if upper.is_a?(Float)
 
     old_rows = get_rows(ps_block)
-    corresponds = @orthogonal_controller.get_parameter_correspond(param_name).uniq
+    corresponds = @orthogonal_controller.get_parameter_correspond(param_name)
     param_defs = corresponds.map{|corr| corr["value"]}.uniq.compact
 
     if param_defs.any?{|v| v < old_range.min}
@@ -601,7 +600,7 @@ binding.pry
       end
     }
 =end
-    
+binding.pry    
     old_lu_rows, new_lu_rows = get_lower_upper_rows(name, old_rows, new_rows)
     
     # generated_area = []
@@ -762,50 +761,47 @@ binding.pry
 
   # 
   def update_orthogonal_table(name, new_variables, direction)
-    correspond = @orthogonal_controller.get_parameter_correspond(name)
-    variables = correspond.map{|cor| cor["value"]}.uniq
-    old_digit_num = correspond[0]["bit"].size
+    corresponds = @orthogonal_controller.get_parameter_correspond(name)
+    variables = corresponds.map{|cor| cor["value"]}.uniq
+    old_digit_num = corresponds[0]["bit"].size
     digit_num = Math.log2(variables.size + new_variables.size).ceil
 
     if old_digit_num < digit_num # extend orthogonal table
       
       old_size = @orthogonal_controller.get_size
       
-      new_correspond = update_correspond_bit_string(correspond, digit_num, old_digit_num, old_size)
+      new_corresponds = update_correspond_bit_string(corresponds, digit_num, old_digit_num, old_size)
       
       @orthogonal_controller.add_copied_table(name)
     end
 
-    assign_parameter_to_orthogonal(correspond, name, new_variables, direction)
+    assign_parameter_to_orthogonal(corresponds, name, new_variables, direction)
     
 binding.pry
   end
 
   # 
-  def update_correspond_bit_string(correspond, digit_num, old_digit_num, old_level)
+  def update_correspond_bit_string(corresponds, digit_num, old_digit_num, old_level)
     old_bit_str = "%0"+old_digit_num.to_s+"b"
     new_bit_str = "%0"+digit_num.to_s+"b"
-    # for i in 0...old_level
     for i in 0...(2**old_digit_num)
-      update_corr = correspond.find{|cor| cor["bit"] == old_bit_str%i }
-      correspond.delete(update_corr)
+      update_corr = corresponds.find{|cor| cor["bit"] == old_bit_str%i }
+      corresponds.delete(update_corr)
       update_corr["bit"] = new_bit_str%i
-      correspond.push(update_corr)
+      corresponds.push(update_corr)
     end
-    return correspond
+    return corresponds
   end
 
   # 
-  def assign_parameter_to_orthogonal(correspond, name, new_param, direction)
+  def assign_parameter_to_orthogonal(corresponds, name, new_param, direction)
     min_bit = nil
     h = {}
     case direction
     when "inside"
-      binding.pry
-      digit_num_of_minus_side = correspond.select{|cor|
+      digit_num_of_minus_side = corresponds.select{|cor|
         cor["value"] < new_param.min
       }.max_by{|cor| cor["value"]}["bit"]
-      # digit_num_of_minus_side = digit_num_of_minus_side["bit"]
       if digit_num_of_minus_side[-1] == "0"
         count = 1
         new_param.each{|v| 
@@ -821,11 +817,11 @@ binding.pry
       end
     when "outside"
       if new_param.size == 2
-        right_digit = correspond.max_by { |cor| 
+        right_digit = corresponds.max_by { |cor| 
           cor["value"] < new_param.max ? cor["value"] : -1 
         }["bit"]
-        left_digit = correspond.min_by { |item| 
-          cor["value"] > new_param.min ? cor["value"] : correspond.size
+        left_digit = corresponds.min_by { |item| 
+          cor["value"] > new_param.min ? cor["value"] : corresponds.size
         }["bit"]
         if right_digit[-1] == "0" # [right_digit.size-1]
           h[new_param.max] = "1"
@@ -839,17 +835,17 @@ binding.pry
         end
       else # new_param.size == 1
         # if param_defs.max < new_param[0] #upper
-        correspond_max = correspond.max_by{|cor| cor["value"]}
-        correspond_min = correspond.min_by{|cor| cor["value"]}
-        if correspond_max["value"] < new_param[0] #upper
-          right_digit_of_max = correspond_max["bit"]
+        corresponds_max = corresponds.max_by{|cor| cor["value"]}
+        corresponds_min = corresponds.min_by{|cor| cor["value"]}
+        if corresponds_max["value"] < new_param[0] #upper
+          right_digit_of_max = corresponds_max["bit"]
           if right_digit_of_max[-1] == "0"
             h[new_param[0]] = "1"
           else
             h[new_param[0]] = "0"
           end
-        elsif correspond_min > new_param[0] #lower
-          right_digit_of_min = correspond_min["bit"]
+        elsif corresponds_min > new_param[0] #lower
+          right_digit_of_min = corresponds_min["bit"]
           if right_digit_of_min[-1] == "0"
             h[new_param[0]] = "1"
           else
@@ -865,44 +861,41 @@ binding.pry
       raise "new parameter could not be assigned to bit on orthogonal table"
     end
 
-    # old_level = correspond.size
-    # param_defs += add_parameters
-    additional_cor = link_parameter(name, h)
+    additional_cor = link_parameter(corresponds, h)
     @orthogonal_controller.assign_parameter_to_table(name, additional_cor)
 binding.pry
   end
 
   # 
-  def link_parameter(correspond, paramDefs_hash)
-    added_corresponds = {}
-    total_size = correspond.size + paramDefs_hash.size
+  def link_parameter(corresponds, paramDefs_hash)
+    added_corresponds = []
+    total_size = corresponds.size + paramDefs_hash.size
     digit_num = Math.log2(total_size).ceil
-    old_level = correspond.size
+    old_level = corresponds.size
     bit_i = 0
     while bit_i < total_size
       bit = ("%0" + digit_num.to_s + "b") % bit_i
-      # if !@parameters[name][:correspond].key?(bit)
       if corresponds.find{|cor| cor["bit"] == bit}.nil?
         if paramDefs_hash.has_value?(bit[-1])
           param = paramDefs_hash.key(bit[-1])
-          corresponds["bit"] = param
-          added_corresponds["bit"] = param
+          add_cor = {}
+          add_cor["bit"] = bit
+          add_cor["value"] = param
           paramDefs_hash.delete(param)
+          corresponds << add_cor
+          added_corresponds << add_cor
         else
           total_size += 1
-          # debug("#{paramDefs_hash}, top_count: #{total_size}")
-          # debug("bit:#{bit}, last_str:#{bit[-1]}")
         end 
       end
       bit_i += 1
     end
-    # if param_defs.size != @parameters[name][:correspond].size
+    # if param_defs.size != corresponds.size
     #   raise "no assignment parameter: 
     #     defs_L:#{param_defs.size}, 
-    #     corr_L:#{@parameters[name][:correspond].size}"
+    #     corr_L:#{@parameters[name][:corresponds].size}"
     #   # binding.pry
     # end
-
     return added_corresponds
   end
 

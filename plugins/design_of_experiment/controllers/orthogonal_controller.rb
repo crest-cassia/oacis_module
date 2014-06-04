@@ -54,25 +54,21 @@ class OrthogonalController #< ApplicationController
   def assign_parameter_to_table(name, corresponds)
     logon_doe_DB
 
-
-    condition = {"$or" => []}
-    corresponds.each do |bit, value|
-      condition["$or"] << {"row.#{name}.bit" => bit}
-    end
-
-    orthogonal_rows = Orthogonal.where("row.#{name}.bit" => correspond["bit"])
-    orthogonal_rows.count
-    if !orthogonal_rows.nil?
-      orthogonal_rows.each do |o_row|
-        if o_row.row[name]["bit"]
-          tmp = orthogonal_row.row
-          tmp[name]["value"] = correspond["value"]
-          orthogonal_row.update_attributes!(row: tmp)
-          orthogonal_row.save
+    corresponds.each do |cor|
+      orthogonal_rows = Orthogonal.where("row.#{name}.bit" => cor["bit"])
+      orthogonal_rows.count
+      if !orthogonal_rows.nil?
+        orthogonal_rows.each do |o_row|
+          tmp = o_row.row
+          if tmp[name]["bit"] == cor["bit"]
+            tmp[name]["value"] = cor["value"]
+            o_row.update_attributes!(row: tmp)
+            o_row.save
+          end
         end
       end
     end
-
+binding.pry    
     leave_doe_DB
   end
 
@@ -130,7 +126,7 @@ class OrthogonalController #< ApplicationController
       rows << doc["row.#{name}"]
     end
     leave_doe_DB
-    return rows.uniq
+    return rows.select{|r| !r["value"].nil? }.uniq
   end
 
 
