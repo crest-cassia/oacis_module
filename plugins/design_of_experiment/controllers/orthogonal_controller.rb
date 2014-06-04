@@ -34,16 +34,21 @@ class OrthogonalController #< ApplicationController
   def add_copied_table(name)
     logon_doe_DB
 
+    copied_rows = []
     Orthogonal.each do |o_row|
       copied_row = o_row.dup.row
-      tmp = o_row.row
+      tmp = o_row.dup.row
       tmp[name]["bit"] = "0#{tmp[name]["bit"]}"
       o_row.update_attributes!(row: tmp)
       o_row.save
 
       copied_row[name]["bit"] = "1#{copied_row[name]["bit"]}"
       copied_row[name]["value"] = nil
-      o_table = Orthogonal.create!(row: copied_row)
+      copied_rows << copied_row
+    end
+
+    copied_rows.each do |r|
+      o_table = Orthogonal.create!(row: r)
       o_table.save!
     end
 

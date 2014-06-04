@@ -155,7 +155,7 @@ class ExtensibleOrthogonalTable
                           new_range, 
                           [new_range.max, old_range.max]
                         ]
-          range_to_ps_block(old_rows, param_name, new_range, "inside", priority)
+          # range_to_ps_block(old_rows, param_name, new_range, "inside", priority)
           new_ranges.each do |inside_range|
             if !inside_range.empty?
               new_ps_block = range_to_ps_block(old_rows, param_name, inside_range, "inside", priority)
@@ -217,9 +217,9 @@ class ExtensibleOrthogonalTable
       tmp_cor = corresponds.find{|cor| cor["value"] == old_range.min }
       candidates = candidates.select{|cor| cor["bit"][-1] != tmp_cor["bit"][-1]}
 
-      lower = candidates.min_by{|v| 
-        (v - (old_range.min - @module_input_data["step_size"][param_name])).abs }
-      lower = candidates.max if lower.nil?
+      lower = candidates.min_by{|cor| 
+        (cor["value"] - (old_range.min - @module_input_data["step_size"][param_name])).abs }["value"]
+      lower = candidates.max_by{|cor| cor["value"]}["value"] if lower.nil?
     elsif lower < @module_input_data["_managed_parameters"][index]["range"].min
       lower = @module_input_data["_managed_parameters"][index]["range"].min
     end
@@ -229,9 +229,9 @@ class ExtensibleOrthogonalTable
       tmp_cor = corresponds.find{|cor| cor["value"] == old_range.max }
       candidates = candidates.select{|cor| cor["bit"][-1] != tmp_cor["bit"][-1]}
 
-      upper = candidates.min_by{|v| 
-        (v - (old_range.max + @module_input_data["step_size"][param_name])).abs }
-      upper = candidates.min if upper.nil?
+      upper = candidates.min_by{|cor| 
+        (cor["value"] - (old_range.max + @module_input_data["step_size"][param_name])).abs }["value"]
+      upper = candidates.min_by{|cor| cor["value"]}["value"] if upper.nil?
     elsif @module_input_data["_managed_parameters"][index]["range"].max < upper
       upper = @module_input_data["_managed_parameters"][index]["range"].max
     end
@@ -243,54 +243,34 @@ class ExtensibleOrthogonalTable
     existed_ps_blocks = []
     if 2 < param_defs.size
       if param_defs.include?(lower)
-        min_bit = corresponds.find{|cor| cor["value"] == lower}
+        min_bit = corresponds.find{|cor| cor["value"] == lower}["bit"]
         new_range.delete(lower)
       elsif !(near_lower = near_value(lower, param_defs, param_name)).nil?
-        min_bit = corresponds.find{|cor| cor["value"] == near_lower}
+        min_bit = corresponds.find{|cor| cor["value"] == near_lower}["bit"]
         new_range.delete(lower)
+        lower = near_lower
       end
       if param_defs.include?(upper)
-        max_bit = corresponds.find{|cor| cor["value"] == upper}
+        max_bit = corresponds.find{|cor| cor["value"] == upper}["bit"]
         new_range.delete(upper)
       elsif !(near_upper = near_value(upper, param_defs, param_name)).nil?
-        max_bit = corresponds.find{|cor| cor["value"] == near_upper}
+        max_bit = corresponds.find{|cor| cor["value"] == near_upper}["bit"]
         new_range.delete(upper)
+        upper = near_upper
       end
       
       if !min_bit.nil?
-        condition = {"$or" => []}
-        or_condition = {"$or" => [{"row.#{param_name}.value" => min_bit}, {"row.#{param_name}.value" => old_range.min}]}#{"row.#{param_name}.bit" => old_lower_bit}]}
-        and_condition = {"$and" => []}
-        old_rows.each do |row|
-          row.each do |key, corr|
-            if key != param_name
-              and_condition["$and"] << {"row.#{key}.bit" => corr["bit"]}
-            end
-          end
-        end
-        and_condition << or_condition
-        condition << and_condition
-        lower_rows = @orthogonal_controller.find_rows(condition)
-        existed_ps_blocks << rows_to_ps_block(lower_rows, ps_block[:direction], ps_block[:priority])
+        lower_range = [lower, old_range.min]
+        new_ps_block = range_to_ps_block(old_rows, param_name, lower_range, "outside", priority)
+        existed_ps_blocks << new_ps_block if !new_ps_block.empty?        
       else
         new_ranges << [lower, old_range.min]
       end
 
       if !max_bit.nil?
-        condition = {"$or" => []}
-        or_condition = {"$or" => [{"row.#{param_name}.value" => max_bit}, {"row.#{param_name}.value" => old_range.max}]}#{"row.#{param_name}.bit" => old_lower_bit}]}
-        and_condition = {"$and" => []}
-        old_rows.each do |row|
-          row.each do |key, corr|
-            if key != param_name
-              and_condition["$and"] << {"row.#{key}.bit" => corr["bit"]}
-            end
-          end
-        end
-        and_condition << or_condition
-        condition << and_condition
-        upper_rows = @orthogonal_controller.find_rows(condition)
-        existed_ps_blocks << rows_to_ps_block(upper_rows, ps_block[:direction], ps_block[:priority])
+        upper_range = [old_range.max, upper]
+        new_ps_block = range_to_ps_block(old_rows, param_name, upper_range, "outside", priority)
+        existed_ps_blocks << new_ps_block if !new_ps_block.empty?     
       else
         new_ranges << [old_range.max, upper]
       end
@@ -314,6 +294,7 @@ class ExtensibleOrthogonalTable
 
   def test_query
     @orthogonal_controller.test_query
+    # @orthogonal_controller.get_parameter_correspond(name)
   end
 
 	private
@@ -345,6 +326,7 @@ class ExtensibleOrthogonalTable
   # 
   def rows_to_ps_block(rows, direction, priority=1.0)
     ps_block = {}
+    binding.pry if rows[0].nil?
     ps_block[:keys] = rows[0].map{|name, corr| name }
     ps_block[:ps] = []
 
@@ -379,13 +361,11 @@ class ExtensibleOrthogonalTable
       condition["$and"] << {"$or" => range.map{|v| {"row.#{k}.bit" => v}} }
     end
     new_rows = @orthogonal_controller.find_rows(condition).map{|r| r.row}
-
     return rows_to_ps_block(new_rows, direction, priority)
   end
 
   # 
-  def update_orthogonal_table(corresponds, name, new_variables, direction)#(name, new_variables, direction)
-    # corresponds = @orthogonal_controller.get_parameter_correspond(name)
+  def update_orthogonal_table(corresponds, name, new_variables, direction)
     variables = corresponds.map{|cor| cor["value"]}.uniq
     old_digit_num = corresponds[0]["bit"].size
     digit_num = Math.log2(variables.size + new_variables.size).ceil
@@ -408,9 +388,11 @@ class ExtensibleOrthogonalTable
     new_bit_str = "%0"+digit_num.to_s+"b"
     for i in 0...(2**old_digit_num)
       update_corr = corresponds.find{|cor| cor["bit"] == old_bit_str%i }
-      corresponds.delete(update_corr)
-      update_corr["bit"] = new_bit_str%i
-      corresponds.push(update_corr)
+      if !update_corr.nil?
+        corresponds.delete(update_corr)
+        update_corr["bit"] = new_bit_str%i
+        corresponds.push(update_corr)
+      end
     end
     return corresponds
   end
@@ -466,7 +448,7 @@ class ExtensibleOrthogonalTable
           else
             h[new_param[0]] = "0"
           end
-        elsif corresponds_min > new_param[0] #lower
+        elsif corresponds_min["value"] > new_param[0] #lower
           right_digit_of_min = corresponds_min["bit"]
           if right_digit_of_min[-1] == "0"
             h[new_param[0]] = "1"
@@ -511,14 +493,12 @@ class ExtensibleOrthogonalTable
       end
       bit_i += 1
     end
-
     return added_corresponds
   end
 
   # 
   def near_value(value, paramDefs, name)
     ret = nil
-    # binding.pry if value.nil?
     paramDefs.each{|v|
       if ((value - @module_input_data["step_size"][name]) < v) && (v < (value + @module_input_data["step_size"][name]))
         ret = v
