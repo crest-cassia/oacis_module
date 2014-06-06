@@ -74,7 +74,6 @@ class ExtensibleOrthogonalTable
     end
   end
 
-
   # 
   def inside_ps_blocks(ps_block, index, priority=1.0)
 

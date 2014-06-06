@@ -8,7 +8,7 @@ require_relative 'parameter_set_generation'
 require_relative './controllers/doe_result_controller'
 require_relative './controllers/orthogonal_controller'
 
-class Doe < OacisModule
+class XDoe < Doe
 
   def self.definition
     h = {}
@@ -18,8 +18,8 @@ class Doe < OacisModule
     h["concurrent_job_max"] = 30
     h["search_parameter_ranges"] = {
       # ex.) 
-      # "beta" => [0.5, 0.6],
-      # "H" => [-0.1, 0.0]
+      "beta" => [0.5, 0.6],
+      "H" => [-0.1, 0.0]
     }
     h["step_size"] = {}
     h["search_parameter_ranges"].each do |key, range|
@@ -38,8 +38,7 @@ class Doe < OacisModule
     @ps_generation = ParameterSetGeneration.new(module_data, step_size)
 
     @ps_block_list = []
-    # @ps_block_list << @ps_generation.get_initial_ps_block_by_extOT#get_initial_ps_block
-    @ps_block_list << @ps_generation.get_initial_ps_block
+    @ps_block_list << @ps_generation.get_initial_ps_block_by_extOT
   end
 
   private
@@ -83,8 +82,7 @@ class Doe < OacisModule
 
       @doe_result_controller.create(ps_block_with_id_set, result_block)
       
-      @ps_generation.new_ps_blocks(ps_block, mean_distances).each do |new_ps_block|
-      # @ps_generation.new_ps_blocks_by_extOT(ps_block, mean_distances).each do |new_ps_block|
+      @ps_generation.new_ps_blocks_by_extOT(ps_block, mean_distances).each do |new_ps_block|
         @ps_block_list << new_ps_block if !is_duplicate(new_ps_block)
       end
     end
@@ -105,7 +103,6 @@ class Doe < OacisModule
     result.try(:fetch, module_data.data["_input_data"]["target_field"])
   end
 
-  # 
   def is_duplicate(check_block)
     dup = false
     return dup if @ps_block_list.empty?
