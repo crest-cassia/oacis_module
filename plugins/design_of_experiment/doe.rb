@@ -38,7 +38,6 @@ class Doe < OacisModule
     @ps_generation = ParameterSetGeneration.new(module_data, step_size)
 
     @ps_block_list = []
-    # @ps_block_list << @ps_generation.get_initial_ps_block_by_extOT#get_initial_ps_block
     @ps_block_list << @ps_generation.get_initial_ps_block
   end
 
@@ -84,7 +83,6 @@ class Doe < OacisModule
       @doe_result_controller.create(ps_block_with_id_set, result_block)
       
       @ps_generation.new_ps_blocks(ps_block, mean_distances).each do |new_ps_block|
-      # @ps_generation.new_ps_blocks_by_extOT(ps_block, mean_distances).each do |new_ps_block|
         @ps_block_list << new_ps_block if !is_duplicate(new_ps_block)
       end
     end

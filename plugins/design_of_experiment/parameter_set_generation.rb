@@ -138,8 +138,9 @@ class ParameterSetGeneration
   end
 
   # 
-  def new_ps_blocks_by_extOT(ps_block, mean_distances)
+  def new_ps_blocks_by_extOT(ps_block, mean_distances, prng)
     ps_blocks = []
+    
     # => inside 
     mean_distances.each_with_index do |mean_distance, index|
       if mean_distance > @module_input_data["distance_threshold"]
@@ -157,6 +158,12 @@ class ParameterSetGeneration
           ps_blocks << new_ps_block
         end
       end
+    end
+    # ==========
+
+    # => wide
+    if prng.rand < @module_input_data["epsilon"]
+      ps_blocks << wide_ps_block(ps_block, prng, 1.0)
     end
     # ==========
 

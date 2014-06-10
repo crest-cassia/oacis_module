@@ -18,19 +18,22 @@ class XDoe < Doe
     h["concurrent_job_max"] = 30
     h["search_parameter_ranges"] = {
       # ex.) 
-      "beta" => [0.5, 0.6],
-      "H" => [-0.1, 0.0]
+      # "beta" => [0.5, 0.6],
+      # "H" => [-0.1, 0.0]
     }
     h["step_size"] = {}
     h["search_parameter_ranges"].each do |key, range|
       h["step_size"][key] = range.max-range.min
       h["step_size"][key] = step_size[key].round(6) if range.first.is_a?(Float)
     end
+    h["epsilon"] = 0.2
     h
   end
 
   def initialize(input_data)
     super(input_data)
+    @seed = 0
+    @prng = Random.new(@seed)
 
     @doe_result_controller = DOEResultController.new    
     @total_ps_block_count = 0
@@ -82,7 +85,7 @@ class XDoe < Doe
 
       @doe_result_controller.create(ps_block_with_id_set, result_block)
       
-      @ps_generation.new_ps_blocks_by_extOT(ps_block, mean_distances).each do |new_ps_block|
+      @ps_generation.new_ps_blocks_by_extOT(ps_block, mean_distances, @prng).each do |new_ps_block|
         @ps_block_list << new_ps_block if !is_duplicate(new_ps_block)
       end
     end
