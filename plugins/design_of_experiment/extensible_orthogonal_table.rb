@@ -298,8 +298,8 @@ class ExtensibleOrthogonalTable
 
     ps_block[:keys].each do |param_name|
       corresponds = @orthogonal_controller.get_parameter_correspond(param_name)
-      edge[param_name] = []
-      param_array = corresponds.select{|cor| cor["value"]}.uniq.compact
+      edge[param_name] ||= []
+      param_array = corresponds.map{|cor| cor["value"]}.uniq.compact
       if prng.rand < 0.5
         edge[param_name] << param_array.min
         edge[param_name] << param_array.sort[1]
@@ -312,13 +312,17 @@ class ExtensibleOrthogonalTable
     condition = {"$and" => []}
 
     edge.each do |k, arr|
-      condition["$and"] << {"$or" => [{"row.#{name}.value" => arr.min}, {"row.#{name}.value" => arr.max}]}
+      condition["$and"] << {"$or" => [{"row.#{k}.value" => arr.min}, {"row.#{k}.value" => arr.max}]}
     end
-    ret = @orthogonal_controller.get_rows(condition)
+    ret = @orthogonal_controller.find_rows(condition)
 
-    new_ps_block = rows_to_ps_block(ret, "outside", priority)
-
-    return new_ps_block
+    if ret.count != 0
+      ret = ret.map{|r| r["row"]}
+      new_ps_block = rows_to_ps_block(ret, "outside", priority)
+      return new_ps_block
+    else
+      return {}
+    end
   end
 
   def test_query

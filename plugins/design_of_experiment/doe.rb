@@ -24,7 +24,7 @@ class Doe < OacisModule
     h["step_size"] = {}
     h["search_parameter_ranges"].each do |key, range|
       h["step_size"][key] = range.max-range.min
-      h["step_size"][key] = step_size[key].round(6) if range.first.is_a?(Float)
+      h["step_size"][key] = h["step_size"][key].round(6) if range.first.is_a?(Float)
     end
     h
   end

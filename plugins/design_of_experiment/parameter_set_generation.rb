@@ -163,7 +163,7 @@ class ParameterSetGeneration
 
     # => wide
     if prng.rand < @module_input_data["epsilon"]
-      ps_blocks << wide_ps_block(ps_block, prng, 1.0)
+      ps_blocks << @xot.wide_ps_block(ps_block, prng, 1.0)
     end
     # ==========
 

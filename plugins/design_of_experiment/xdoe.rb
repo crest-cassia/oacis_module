@@ -8,7 +8,7 @@ require_relative 'parameter_set_generation'
 require_relative './controllers/doe_result_controller'
 require_relative './controllers/orthogonal_controller'
 
-class XDoe < Doe
+class Xdoe < OacisModule
 
   def self.definition
     h = {}
@@ -24,7 +24,7 @@ class XDoe < Doe
     h["step_size"] = {}
     h["search_parameter_ranges"].each do |key, range|
       h["step_size"][key] = range.max-range.min
-      h["step_size"][key] = step_size[key].round(6) if range.first.is_a?(Float)
+      h["step_size"][key] = h["step_size"][key].round(6) if range.first.is_a?(Float)
     end
     h["epsilon"] = 0.2
     h
