@@ -80,7 +80,8 @@ class Doe < OacisModule
         {key => mean_distances[index]}
       }
 
-      @doe_result_controller.create(ps_block_with_id_set, result_block)
+      sim = module_data.data["_input_data"]["_target"]["Simulator"]
+      @doe_result_controller.create(sim, ps_block_with_id_set, result_block)
       
       @ps_generation.new_ps_blocks(ps_block, mean_distances).each do |new_ps_block|
         @ps_block_list << new_ps_block if !is_duplicate(new_ps_block)
@@ -118,7 +119,7 @@ class Doe < OacisModule
       end
       return dup if dup
     end
-    dup = @doe_result_controller.duplicate(check_block)
+    dup = @doe_result_controller.duplicate(sim, check_block)
 
     return dup
   end

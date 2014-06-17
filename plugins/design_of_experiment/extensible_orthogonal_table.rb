@@ -12,10 +12,10 @@ class ExtensibleOrthogonalTable
 
   # 
   def initial_regist_rows(rows)
-    checked_rows = @orthogonal_controller.duplicate_check(rows)
+    checked_rows = @orthogonal_controller.duplicate_check(@module_input_data["_target"]["Simulator"], rows)
     if !checked_rows[:new].empty?
       checked_rows[:new].each do |row|
-        @orthogonal_controller.create(row)
+        @orthogonal_controller.create(@module_input_data["_target"]["Simulator"], row)
       end
     else
     end
@@ -27,10 +27,10 @@ class ExtensibleOrthogonalTable
   def generation_orthogonal_table(ps_block)
 
   	rows = ps_blocks_to_rows(ps_block)
-  	checked_rows = @orthogonal_controller.duplicate_check(rows)
+  	checked_rows = @orthogonal_controller.duplicate_check(@module_input_data["_target"]["Simulator"], rows)
   	if !checked_rows[:new].empty?
   		checked_rows[:new].each do |row|
-  			@orthogonal_controller.create(row)
+  			@orthogonal_controller.create(@module_input_data["_target"]["Simulator"], row)
   		end
   	else
 
@@ -40,14 +40,14 @@ class ExtensibleOrthogonalTable
   # 
   def get_rows(ps_block)
     rows = ps_blocks_to_rows(ps_block)
-    checked_rows = @orthogonal_controller.duplicate_check(rows)
+    checked_rows = @orthogonal_controller.duplicate_check(@module_input_data["_target"]["Simulator"], rows)
     return checked_rows[:duplicate]
   end
 
   # 
   def find_rows(name, range)
     condition = {"$or" => range.map{|v| {"row.#{name}.value" => v}} }
-    rows = @orthogonal_controller.find_rows(condition)
+    rows = @orthogonal_controller.find_rows(@module_input_data["_target"]["Simulator"], condition)
     if rows.count > 0
       return rows.map { |r| r["row"]  }
     else
@@ -66,7 +66,7 @@ class ExtensibleOrthogonalTable
       and_condition["$and"] << or_condition
     end
 
-    rows = @orthogonal_controller.find_rows(and_condition)
+    rows = @orthogonal_controller.find_rows(@module_input_data["_target"]["Simulator"], and_condition)
 
     if rows.count > 0
       return rows.map { |r| r["row"]  }
@@ -92,7 +92,7 @@ class ExtensibleOrthogonalTable
 
     old_rows = get_rows(ps_block)
 
-    corresponds = @orthogonal_controller.get_parameter_correspond(param_name)
+    corresponds = @orthogonal_controller.get_parameter_correspond(@module_input_data["_target"]["Simulator"], param_name)
     param_array = corresponds.map{|corr| corr["value"]}.uniq.compact
     existed_ps_blocks = []
     if 2 < param_array.size
@@ -209,7 +209,7 @@ class ExtensibleOrthogonalTable
     upper = upper.round(6) if upper.is_a?(Float)
 
     old_rows = get_rows(ps_block)
-    corresponds = @orthogonal_controller.get_parameter_correspond(param_name)
+    corresponds = @orthogonal_controller.get_parameter_correspond(@module_input_data["_target"]["Simulator"], param_name)
     param_array = corresponds.map{|corr| corr["value"]}.uniq.compact
 
     if param_array.any?{|v| v < old_range.min}
@@ -297,7 +297,7 @@ class ExtensibleOrthogonalTable
     edge = {}
 
     ps_block[:keys].each do |param_name|
-      corresponds = @orthogonal_controller.get_parameter_correspond(param_name)
+      corresponds = @orthogonal_controller.get_parameter_correspond(@module_input_data["_target"]["Simulator"], param_name)
       edge[param_name] ||= []
       param_array = corresponds.map{|cor| cor["value"]}.uniq.compact
       if prng.rand < 0.5
@@ -314,7 +314,7 @@ class ExtensibleOrthogonalTable
     edge.each do |k, arr|
       condition["$and"] << {"$or" => [{"row.#{k}.value" => arr.min}, {"row.#{k}.value" => arr.max}]}
     end
-    ret = @orthogonal_controller.find_rows(condition)
+    ret = @orthogonal_controller.find_rows(@module_input_data["_target"]["Simulator"], condition)
 
     if ret.count != 0
       ret = ret.map{|r| r["row"]}
@@ -393,7 +393,7 @@ class ExtensibleOrthogonalTable
     h.each do |k, range|
       condition["$and"] << {"$or" => range.map{|v| {"row.#{k}.bit" => v}} }
     end
-    new_rows = @orthogonal_controller.find_rows(condition).map{|r| r.row}
+    new_rows = @orthogonal_controller.find_rows(@module_input_data["_target"]["Simulator"], condition).map{|r| r.row}
     return rows_to_ps_block(new_rows, direction, priority)
   end
 
@@ -405,11 +405,11 @@ class ExtensibleOrthogonalTable
 
     if old_digit_num < digit_num # extend orthogonal table
       
-      old_size = @orthogonal_controller.get_size
+      old_size = @orthogonal_controller.get_size(@module_input_data["_target"]["Simulator"])
       
       new_corresponds = update_correspond_bit_string(corresponds, digit_num, old_digit_num, old_size)
       
-      @orthogonal_controller.add_copied_table(name)
+      @orthogonal_controller.add_copied_table(@module_input_data["_target"]["Simulator"], name)
     end
 
     assign_parameter_to_orthogonal(corresponds, name, new_variables, direction)
@@ -499,7 +499,7 @@ class ExtensibleOrthogonalTable
     end
 
     additional_cor = link_parameter(corresponds, h)
-    @orthogonal_controller.assign_parameter_to_table(name, additional_cor)
+    @orthogonal_controller.assign_parameter_to_table(@module_input_data["_target"]["Simulator"], name, additional_cor)
   end
 
   # 

@@ -2,10 +2,11 @@ require_relative '../models/doe_result'
 
 class DOEResultController #< ApplicationController
 
-	def create(ps_block_with_id_set, result_block)
+	def create(sim, ps_block_with_id_set, result_block)
 		logon_doe_DB
 
 		result = DOEResult.create!(
+      simulator: sim,
       module_name: "doe",
       block: ps_block_with_id_set,
       results: result_block
@@ -19,7 +20,7 @@ class DOEResultController #< ApplicationController
 	def destroy
   end
 
-  def duplicate(check_block)
+  def duplicate(sim, check_block)
     logon_doe_DB
 
     v_set = []
@@ -30,7 +31,7 @@ class DOEResultController #< ApplicationController
       end
       v_set << parameter_set
     end
-    query = {"block.v_set"=> v_set}
+    query = {"$and" => [{"simulator" => sim}, {"block.v_set"=> v_set}]}
     ret = DOEResult.where(query).count
 
     leave_doe_DB

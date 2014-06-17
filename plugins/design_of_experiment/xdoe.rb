@@ -14,7 +14,7 @@ class Xdoe < OacisModule
     h = {}
     h["ps_block_count_max"] = 1000
     h["distance_threshold"] = 0.1
-    h["target_field"] = "order_parameter"
+    h["target_field"] = "result"
     h["concurrent_job_max"] = 30
     h["search_parameter_ranges"] = {
       # ex.) 
@@ -35,7 +35,7 @@ class Xdoe < OacisModule
     @seed = 0
     @prng = Random.new(@seed)
 
-    @doe_result_controller = DOEResultController.new    
+    @doe_result_controller = DOEResultController.new
     @total_ps_block_count = 0
     step_size = module_data.data["_input_data"]["step_size"]
     @ps_generation = ParameterSetGeneration.new(module_data, step_size)
@@ -83,7 +83,8 @@ class Xdoe < OacisModule
         {key => mean_distances[index]}
       }
 
-      @doe_result_controller.create(ps_block_with_id_set, result_block)
+      sim = module_data.data["_input_data"]["_target"]["Simulator"]
+      @doe_result_controller.create(sim, ps_block_with_id_set, result_block)
       
       @ps_generation.new_ps_blocks_by_extOT(ps_block, mean_distances, @prng).each do |new_ps_block|
         @ps_block_list << new_ps_block if !is_duplicate(new_ps_block)
@@ -106,6 +107,7 @@ class Xdoe < OacisModule
     result.try(:fetch, module_data.data["_input_data"]["target_field"])
   end
 
+  #
   def is_duplicate(check_block)
     dup = false
     return dup if @ps_block_list.empty?
@@ -120,7 +122,8 @@ class Xdoe < OacisModule
       end
       return dup if dup
     end
-    dup = @doe_result_controller.duplicate(check_block)
+    sim = module_data.data["_input_data"]["_target"]["Simulator"]
+    dup = @doe_result_controller.duplicate(sim, check_block)
 
     return dup
   end
