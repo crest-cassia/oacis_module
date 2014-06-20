@@ -12,14 +12,16 @@ class Xdoe < OacisModule
 
   def self.definition
     h = {}
-    h["ps_block_count_max"] = 1000
-    h["distance_threshold"] = 0.1
+    h["ps_block_count_max"] = 2000
+    h["distance_threshold"] = 8 #0.1
     h["target_field"] = "result"
     h["concurrent_job_max"] = 30
     h["search_parameter_ranges"] = {
       # ex.) 
       # "beta" => [0.5, 0.6],
       # "H" => [-0.1, 0.0]
+      "x" => [-0.5, 0.5],
+      "y" => [-0.5, 0.5]
     }
     h["step_size"] = {}
     h["search_parameter_ranges"].each do |key, range|
@@ -76,7 +78,8 @@ class Xdoe < OacisModule
     end
 
     @running_ps_block_list.each do |ps_block|
-      mean_distances = MeanTest.mean_distances(ps_block)
+      # mean_distances = MeanTest.mean_distances(ps_block)
+      mean_distances = FTest.eff_facts(ps_block)
 
       ps_block_with_id_set = @ps_generation.ps_block_with_id_set(ps_block)
       result_block = ps_block[:keys].each_with_index.map {|key, index| 

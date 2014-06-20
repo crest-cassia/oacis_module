@@ -1,4 +1,4 @@
-require 'pp'
+require 'pry'
 
 module FTest
 
@@ -24,9 +24,9 @@ module FTest
   #  {name=>1,
   #  ...
   #]
-  def self.eff_facts(f_block)
+  def self.eff_facts(ps_block)
 
-    #f_block = {
+    #ps_block = {
     #             keys: ["beta", "H"],
     #             ps: [
     #                   {v: [0.2, -1.0], result: [-0.483285, -0.484342, -0.483428]},
@@ -38,7 +38,7 @@ module FTest
     @ss = 0
     @count = 0
 
-    f_block[:ps].each do |ps|
+    ps_block[:ps].each do |ps|
       cycle_array = ps[:result]
       @mean += cycle_array.inject(:+)
       @ss += cycle_array.map {|x| x*x}.inject(:+)
@@ -49,12 +49,12 @@ module FTest
     @mean /= @count.to_f
 
     effFacts = []
-    f_block[:keys].each_with_index do |key, index|
+    ps_block[:keys].each_with_index do |key, index|
       effFact = {}
       effFact[:name] = index
       effFact[:results] = {}
 
-      f_block[:ps].each do |ps|
+      ps_block[:ps].each do |ps|
         effFact[:results][ps[:v][index]] ||= []
         effFact[:results][ps[:v][index]] += ps[:result]
       end
@@ -80,7 +80,8 @@ module FTest
       fact[:f_value] = fact[:effect] / @e_v
     end
 
-    effFacts
+    # effFacts
+    effFacts.map{|fact| fact[:f_value]}
   end
 
   private
@@ -90,12 +91,19 @@ module FTest
 end
 
 if $0 == __FILE__
-  ps_array = [
-      ParameterSet.where("v.noise" => 0.5, "v.num_games" => 10).first,
-      ParameterSet.where("v.noise" => 0.5, "v.num_games" => 9).first,
-      ParameterSet.where("v.noise" => 0.0, "v.num_games" => 10).first,
-      ParameterSet.where("v.noise" => 0.0, "v.num_games" => 9).first
-    ]
 
-  pp FTest.eff_facts(ps_array, ["noise", "num_games"])
+binding.pry
+  
+  ps_block = {  keys: ["x", "y"],
+                ps: [
+                      {v: [-5.5,-5.5], result: [ 0.919123, 1.208341, 0.923663, 1.022789, 1.138628 ]},
+                      {v: [-5.5,-4.5], result: [ 1.157638, 1.123510, 1.151364, 0.966503, 1.043049 ]},
+                      {v: [-4.5,-5.5], result: [ 0.954927, 1.530289, 1.063220, 1.148652, 1.146276 ]},
+                      {v: [-4.5,-4.5], result: [1.2972571, 1.203748, 1.100992, 1.056991, 1.213790 ]}
+                    ]
+              }
+
+  pp FTest.eff_facts(ps_block)
+
+binding.pry
 end

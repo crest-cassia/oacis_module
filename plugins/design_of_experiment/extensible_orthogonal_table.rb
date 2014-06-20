@@ -119,20 +119,21 @@ class ExtensibleOrthogonalTable
           new_range = []
           # btwn_params = param_array.select{|v| old_range.min < v && v < old_range.max}.sort
           btwn_corresponds = corresponds.select{|cor| old_range.min < cor["value"] && cor["value"] < old_range.max}
-          min_corr, maxp = nil, nil
+          min_cor, max_cor = nil, nil
           abs = nil
           if min_bit.nil?
+
             old_min_bit = corresponds.find{|cor| cor["value"] = old_range.min}
             lower_candidats = btwn_corresponds.select{|cor| old_min_bit[-1] != cor["bit"][-1] }
             # find near value
             lower_candidats.each{|cor|
               if abs.nil? || abs > (cor["value"] - old_range.min).abs
                 abs = (cor["value"] - old_range.min).abs
-                min_corr = cor
+                min_cor = cor
               end
             }
-            min_bit = min_corr["bit"]
-            new_range << min_corr["value"]
+            min_bit = min_cor["bit"]
+            new_range << min_cor["value"]
           end
           abs = nil
           if max_bit.nil?
