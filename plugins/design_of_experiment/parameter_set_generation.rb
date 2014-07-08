@@ -195,6 +195,22 @@ class ParameterSetGeneration
     with_id_set
   end
 
+  # 
+  def id_list_of_ps_block(ps_block)
+    id_list = {:parameter_set_id => []}
+    ps_block[:ps].each do |ps|
+      parameter_set = {}
+      ps[:v].each_with_index do |value, index|
+        parameter_set[ps_block[:keys][index]] = value
+      end
+      query = {}
+      parameter_set.each{|k,v| query["v.#{k}"] = v }
+      id_list[:parameter_set_id] << ParameterSet.where(query).first._id
+    end
+
+    return id_list.sort
+  end
+
 
   private
   def ps_block_to_range_hash(ps_block)

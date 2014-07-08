@@ -4,13 +4,16 @@ class DOEResult
 
 
   field :module_name, type: String
+  field :simulator, type: String
+  field :id_list, type: Hash
   field :block, type: Hash # block is collection of parameter set
   field :results, type: Hash
-  field :simulator, type: String
+  
 
-  index({ status: 1 }, { name: "doe_result_index" })
+  # index({ status: 1 }, { name: "doe_result_index" })
+  # index({ id_list: 1 }, { unique: true, name: "doe_block_index" })#background: true
 
-  attr_accessible :module_name, :simulator, :block, :results
+  attr_accessible :module_name, :simulator, :id_list, :block, :results
 
 
   private

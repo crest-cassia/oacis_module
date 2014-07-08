@@ -395,6 +395,7 @@ class ExtensibleOrthogonalTable
       condition["$and"] << {"$or" => range.map{|v| {"row.#{k}.bit" => v}} }
     end
     new_rows = @orthogonal_controller.find_rows(@module_input_data["_target"]["Simulator"], condition).map{|r| r.row}
+    binding.pry if new_rows.empty?
     return rows_to_ps_block(new_rows, direction, priority)
   end
 

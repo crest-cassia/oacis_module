@@ -45,7 +45,7 @@ module FTest
       @count += cycle_array.size
     end
 
-    @ct = @mean * @mean / @count.to_f
+    @ct = @mean*@mean / @count.to_f
     @mean /= @count.to_f
 
     effFacts = []
@@ -61,7 +61,7 @@ module FTest
 
       effFact[:effect] = 0.0
       effFact[:results].each_value do |v|
-        effFact[:effect] += (v.inject(:+) ** 2).to_f / v.size
+        effFact[:effect] += (v.inject(:+)**2).to_f / v.size
       end
       effFact[:effect] -= @ct
       effFact[:free] = 1
@@ -77,7 +77,13 @@ module FTest
     @e_f = 1 if @e_f == 0 # TODO
     @e_v = @s_e / @e_f
     effFacts.each do |fact|
-      fact[:f_value] = fact[:effect] / @e_v
+      if fact[:effect] <= 0.0
+        fact[:f_value] = 0.0
+      elsif @e_v == 0.0
+        fact[:f_value] = fact[:effect]
+      else
+        fact[:f_value] = fact[:effect] / @e_v
+      end
     end
 
     # effFacts
@@ -91,15 +97,21 @@ module FTest
 end
 
 if $0 == __FILE__
-
-binding.pry
   
+  # ps_block = {  keys: ["x", "y"],
+  #               ps: [
+  #                     {v: [-5.5,-5.5], result: [ 0.919123, 1.208341, 0.923663, 1.022789, 1.138628 ]},
+  #                     {v: [-5.5,-4.5], result: [ 1.157638, 1.123510, 1.151364, 0.966503, 1.043049 ]},
+  #                     {v: [-4.5,-5.5], result: [ 0.954927, 1.530289, 1.063220, 1.148652, 1.146276 ]},
+  #                     {v: [-4.5,-4.5], result: [1.2972571, 1.203748, 1.100992, 1.056991, 1.213790 ]}
+  #                   ]
+  #             }
   ps_block = {  keys: ["x", "y"],
                 ps: [
-                      {v: [-5.5,-5.5], result: [ 0.919123, 1.208341, 0.923663, 1.022789, 1.138628 ]},
-                      {v: [-5.5,-4.5], result: [ 1.157638, 1.123510, 1.151364, 0.966503, 1.043049 ]},
-                      {v: [-4.5,-5.5], result: [ 0.954927, 1.530289, 1.063220, 1.148652, 1.146276 ]},
-                      {v: [-4.5,-4.5], result: [1.2972571, 1.203748, 1.100992, 1.056991, 1.213790 ]}
+                      {v: [-5.5,-5.5], result: [ 0.0, 0.0, 0.0, 0.0, 0.0 ]},
+                      {v: [-5.5,-4.5], result: [ 0.0, 0.0, 0.0, 0.0, 0.0 ]},
+                      {v: [-4.5,-5.5], result: [ 0.0, 0.0, 0.0, 0.0, 0.0 ]},
+                      {v: [-4.5,-4.5], result: [ 0.0, 0.0, 0.0, 0.0, 0.0 ]}
                     ]
               }
 

@@ -7,7 +7,8 @@ class Orthogonal
   # field :block, type: Hash # block is collection of parameter set
   field :simulator, type: String
 
-  index({ status: 1 }, { name: "orthogonal_index" })
+  # index({ status: 1 }, { name: "orthogonal_index" })
+  index({ row: 1 }, { unique: true, name: "orthogonal_row_index" })#background: true
 
   attr_accessible :row, :simulator
 

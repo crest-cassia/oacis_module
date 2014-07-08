@@ -15,13 +15,14 @@ class Xdoe < OacisModule
     h["ps_block_count_max"] = 2000
     h["distance_threshold"] = 8 #0.1
     h["target_field"] = "result"
-    h["concurrent_job_max"] = 30
+    h["concurrent_job_max"] = 50
     h["search_parameter_ranges"] = {
       # ex.) 
       # "beta" => [0.5, 0.6],
       # "H" => [-0.1, 0.0]
-      "x" => [-0.5, 0.5],
-      "y" => [-0.5, 0.5]
+      "x" => [0.2, 0.3],
+      "y" => [0.4, 0.5],
+      "z" => [0.6, 0.7]
     }
     h["step_size"] = {}
     h["search_parameter_ranges"].each do |key, range|
@@ -43,7 +44,11 @@ class Xdoe < OacisModule
     @ps_generation = ParameterSetGeneration.new(module_data, step_size)
 
     @ps_block_list = []
-    @ps_block_list << @ps_generation.get_initial_ps_block_by_extOT
+    new_ps_block = @ps_generation.get_initial_ps_block_by_extOT
+    @ps_block_list << new_ps_block
+
+    @dup_count = 0
+    @created_ps_block = 0
   end
 
   private
@@ -54,12 +59,16 @@ class Xdoe < OacisModule
     ps_count = 0
     num_jobs = module_data.data["_input_data"]["concurrent_job_max"]
     @running_ps_block_list = @ps_block_list.shift(num_jobs)
+    @created_ps_block += @running_ps_block_list.size
     @running_ps_block_list.each do |ps_block|
       ps_block[:ps].each do |ps|
         module_data.set_input(@num_iterations, ps_count, ps[:v])
         ps_count += 1
       end
     end
+
+    p "created ps_block: #{@created_ps_block}"
+    p "ps_block_list: #{@ps_block_list.size}"
 
     super
   end
@@ -81,20 +90,33 @@ class Xdoe < OacisModule
       # mean_distances = MeanTest.mean_distances(ps_block)
       mean_distances = FTest.eff_facts(ps_block)
 
-      ps_block_with_id_set = @ps_generation.ps_block_with_id_set(ps_block)
+      # ps_block_with_id_set = @ps_generation.ps_block_with_id_set(ps_block)
+      id_list = @ps_generation.id_list_of_ps_block(ps_block) # sorted list
       result_block = ps_block[:keys].each_with_index.map {|key, index| 
         {key => mean_distances[index]}
       }
 
       sim = module_data.data["_input_data"]["_target"]["Simulator"]
-      @doe_result_controller.create(sim, ps_block_with_id_set, result_block)
+      # @doe_result_controller.create(sim, ps_block_with_id_set, result_block)
+      @doe_result_controller.create(sim, ps_block, id_list, result_block)
       
-      @ps_generation.new_ps_blocks_by_extOT(ps_block, mean_distances, @prng).each do |new_ps_block|
-        @ps_block_list << new_ps_block if !is_duplicate(new_ps_block)
+      new_ps_blocks = @ps_generation.new_ps_blocks_by_extOT(ps_block, mean_distances, @prng)
+      new_ps_block_size = new_ps_blocks.size
+      local_dup_count = 0
+      new_ps_blocks.each do |new_ps_block|
+        if !is_duplicate(new_ps_block)
+          @ps_block_list << new_ps_block
+          p "current ps_block size: #{@ps_block_list.size}"
+        else
+          local_dup_count += 1
+          p "duplicated: #{local_dup_count} / #{new_ps_block_size}"
+          @dup_count += 1
+        end
       end
     end
-
+    p "running ps_block size: #{@running_ps_block_list.size}"
     @total_ps_block_count += @running_ps_block_list.size
+
   end
 
   #override
@@ -113,6 +135,7 @@ class Xdoe < OacisModule
   #
   def is_duplicate(check_block)
     dup = false
+    binding.pry if check_block.nil? # 
     return dup if @ps_block_list.empty?
     @ps_block_list.each do |ps_block|
       dup = true
@@ -125,9 +148,29 @@ class Xdoe < OacisModule
       end
       return dup if dup
     end
-    sim = module_data.data["_input_data"]["_target"]["Simulator"]
-    dup = @doe_result_controller.duplicate(sim, check_block)
+
+    # if !dup
+    #   sim = module_data.data["_input_data"]["_target"]["Simulator"]
+    #   dup = @doe_result_controller.duplicate(sim, check_block)
+    # end
 
     return dup
+  end
+
+  # 
+  def extract_unique_block(check_blocks)
+    #ps_block = {
+    #             keys: ["beta", "H"],
+    #             ps: [
+    #                   {v: [0.2, -1.0], result: [-0.483285, -0.484342, -0.483428]},
+    #                   ...
+    #                 ],
+    #             priority: 5.0,
+    #             direction: "inside"
+    #          }
+
+    check_blocks -= @ps_block_list
+
+
   end
 end
