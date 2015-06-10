@@ -253,6 +253,7 @@ end
 #
 def debug_test_sitevisit
   require 'pry'
+
   headers, *parameter_sets = CSV.read('./oaTable_18x9.csv') #162 rows
   execute_crowdwalk_parallel(parameter_sets, 3, 4)
 
@@ -264,7 +265,7 @@ def debug_test_sitevisit
   5.times{list = list.product(base).map{|a| a.flatten}}
 
   populations = [70,500,1000,2000,3000,4000,5000,6000,7000,7500,8000,9000,10000]
-  all_patterns = lit.product(populations).each{|a| a.flatten }
+  all_patterns = list.product(populations).map{|a| a.flatten }
   execute_crowdwalk_parallel(all_patterns, 3, 4)
 
 end
