@@ -134,12 +134,31 @@ def simulate_one_parameter_set(population, evacuate_area, sample_size)
   ticks = []
   out_dir = "./#{population}/#{evacuate_area.join("_")}"
 
-  sample_size.times.each{|seed|
+  if check_already(out_dir, sample_size)
+    ticks = JSON.load(open("#{out_dir}/_output.json"))
+  else
+    sample_size.times.each{|seed|
     create_crowdwalk_kamakura_file(population, evacuate_area, out_dir, seed)
     ticks << do_crowdwalk("#{out_dir}", "properties_#{seed}.json")
   }
-  open("#{out_dir}/_output.json", "w"){|io| io.write(ticks.to_s)}
+    open("#{out_dir}/_output.json", "w"){|io| io.write(ticks.to_s)}
+  end
+  
   return ticks.inject(:+)/ticks.size
+end
+#
+def check_already(out_dir, sample_size)
+  result_file = "#{out_dir}/_output.json"
+  if File.exist?(result_file)
+    res = JSON.load(open(result_file))
+    if res.nil? || res.empty? || res.size < sample_size
+      return false
+    else
+      return true
+    end
+  else
+    return false
+  end
 end
 
 #
@@ -236,6 +255,18 @@ def debug_test_sitevisit
   require 'pry'
   headers, *parameter_sets = CSV.read('./oaTable_18x9.csv') #162 rows
   execute_crowdwalk_parallel(parameter_sets, 3, 4)
+
+  exit(0)
+
+  # = = = all pattern = = = 
+  base = [0,1,2]
+  list = base.product(base).map{|a| a.flatten}
+  5.times{list = list.product(base).map{|a| a.flatten}}
+
+  populations = [70,500,1000,2000,3000,4000,5000,6000,7000,7500,8000,9000,10000]
+  all_patterns = lit.product(populations).each{|a| a.flatten }
+  execute_crowdwalk_parallel(all_patterns, 3, 4)
+
 end
 
 #
@@ -258,11 +289,14 @@ def debug_result_test(init_params, headers, parameter_sets)
   }
 
   result = targets[headers[7]].map{|k,v| [k, v.inject(:+)/v.size]}.to_h
-  # 5000~7500
-  a1 = (result[7500] - result[5000]) / (7500 - 5000)
-  # 7500~10000
-  a2 = (result[10000] - result[7500]) / (10000 - 7500)
+  # 3000 ~ 5000
+  a1 = (result[5000] - result[3000]) / (5000 - 3000)
+  # 5000 ~ 7000
+  a2 = (result[7000] - result[5000]) / (7000 - 5000)
+
+
   binding.pry
+
 end
 
 
@@ -298,9 +332,8 @@ end
 if __FILE__ == $0
 
   # debug_test
-  debug_test_rsruby
-  
-  
+  # debug_test_rsruby
+
   exit(0)
   # test_sum_result
 
