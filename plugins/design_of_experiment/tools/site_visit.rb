@@ -332,7 +332,7 @@ end
 if __FILE__ == $0
 
   # debug_test
-  # debug_test_rsruby
+  debug_test_rsruby
 
   exit(0)
   # test_sum_result
