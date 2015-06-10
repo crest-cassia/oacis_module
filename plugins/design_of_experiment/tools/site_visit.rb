@@ -265,13 +265,44 @@ def debug_result_test(init_params, headers, parameter_sets)
   binding.pry
 end
 
+
+def test_sum_result
+  require 'pry'
+
+  # files = Dir.glob("/media/547E-838B/sitevisit/*/*/_output.json")
+  out_result = {}
+
+  files.each{|f|
+    res = JSON.load(open(f))
+    average = res.inject(:+)/res.size
+
+    paths = f.split("/")
+    out_result[paths[5]] ||= {}
+    out_result[paths[5]][paths[4]] = average
+    
+  }
+
+  
+  CSV.open("out_result.csv", "w"){|row|
+    out_result.each{|oa_str, hash|
+      oa = oa_str.split("_")
+      arr = hash.sort_by{|k,v| k.to_i}
+      aves = arr.map{|a| a[1]}
+      row << oa + aves
+    }
+  }
+  binding.pry
+end
+
 # 
 if __FILE__ == $0
 
   # debug_test
   debug_test_rsruby
   
+  
   exit(0)
+  # test_sum_result
 
   # for_sitevisit
   debug_test_sitevisit

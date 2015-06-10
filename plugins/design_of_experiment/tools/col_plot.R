@@ -1,0 +1,10 @@
+# #install.packages("qgraph")
+# install.packages("psych")
+library(psych)
+crowdwalk<-read.csv("out_result.csv")
+z<-cor(crowdwalk)
+# cor.plot(z)
+
+# # install.package("corrplot")
+# library(corrplot)
+# corrplot(z)
