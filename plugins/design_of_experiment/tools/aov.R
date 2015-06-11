@@ -35,8 +35,6 @@ y7<-c(8058, 8135, 8724, 7376, 7738, 7443, 10855, 10857,
 g1<-0
 g2<-1
 
-# data1<-data.frame(g=g1,rbind(merge(x3,y3),merge(x5,y5)))
-# data2<-data.frame(g=g2,rbind(merge(x5,y5),merge(x7,y7)))
 
 data1<-data.frame(g=g1,rbind(merge(x1,y1),merge(x3,y3)))
 data2<-data.frame(g=g2,rbind(merge(x3,y3),merge(x5,y5)))
@@ -44,7 +42,31 @@ data<-data.frame(rbind(data1,data2))
 
 # 並行性の検定 ***があれば違う傾き
 summary.aov(lm(y~x*factor(g), data=data))
+
+
+data1<-data.frame(g=g1,rbind(merge(x3,y3),merge(x5,y5)))
+data2<-data.frame(g=g2,rbind(merge(x5,y5),merge(x7,y7)))
+data<-data.frame(rbind(data1,data2))
+
+# 並行性の検定 ***があれば違う傾き
+summary.aov(lm(y~x*factor(g), data=data))
+
 q()
+
+#              Df    Sum Sq   Mean Sq F value Pr(>F)    
+# x             1 257712187 257712187 312.063 <2e-16 ***
+# factor(g)     1         0         0   0.000 1.0000    
+# x:factor(g)   1   4365654   4365654   5.286 0.0225 *  
+# Residuals   212 175076518    825833                   
+
+#              Df    Sum Sq   Mean Sq F value Pr(>F)    
+# x             1 429180615 429180615 194.423 <2e-16 ***
+# factor(g)     1         0         0   0.000  1.000    
+# x:factor(g)   1   1459280   1459280   0.661  0.417    
+# Residuals   212 467981318   2207459                   
+# ---
+# Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
 
 x1<-0.1
 y1<-c(0.21,0.22,0.2,0.19,0.18)
