@@ -47,7 +47,7 @@ module Doe
       @r.eval_R("parameterSet <- merge(oaTable, dataFrames)")
       
       # save csv file
-      @r.eval_R("write.csv(parameterSet, \"set.csv\", quote=F, row.names=F)")
+      # @r.eval_R("write.csv(parameterSet, \"set.csv\", quote=F, row.names=F)")
 
       parameter_sets = @r.parameterSet
     end

@@ -177,7 +177,87 @@ end
 
 #= = = = CrowdWalk = = = =
 
+#= = = = DoE = = = = 
 
+#
+def doe_aov(target_name, target_params, headers, parameter_sets)
+  target = target_params.map{|v| [v,[]] }.to_h
+  target_id = headers.index(target_name)
+
+  
+  parameter_sets.each{|ps|
+    # for CrowdWalk_kamakura
+    dir = "#{ps[7].to_i}/#{ps[0..6].join("_")}"
+    f_path = dir + "/_output.json"
+    ticks = JSON.load(open(f_path))
+
+    target[ps[target_id].to_i] += ticks
+  }
+
+  x1, x2, x3 = target.map{|k, v| k}
+  y1, y2, y3 = target.map{|k, v| v}
+
+  return res = Doe::aov(x1, x2, x3, y1, y2, y3)
+end
+
+#
+def create_divide_parameters(target_name, parameters, limit)
+  check = parameters[target_name].sort
+  l_flag = (limit["interval"] < check[1] - check[0])
+  u_flag = (limit["interval"] < check[2] - check[1])
+
+  new_parameters1, new_parameters2 = {}, {}
+  parameters.each{|k, v|
+    if k == target_name
+      params = parameters[target_name].sort
+      # 1
+      if l_flag
+        divide_point1 = (params[0] + params[1]) / 2
+        new_parameters1[k] = [params[0], divide_point1, params[1]]
+      end
+      #2
+      if u_flag
+        divide_point2 = (params[1] + params[2]) / 2
+        new_parameters2[k] = [params[1], divide_point2, params[2]]
+      end
+    else
+      new_parameters1[k] = v if l_flag
+      new_parameters2[k] = v if u_flag
+    end
+  }
+  # binding.pry
+  return new_parameters1, new_parameters2
+end
+#
+def create_expand_parameters(target_name, parameters, limit)
+  # check
+  check = parameters[target_name].sort
+  l_flag = check[0] > limit["lower"]
+  u_flag = check[2] < limit["upper"]
+
+  new_parameters1, new_parameters2 = {}, {}
+  parameters.each{|k,v|
+    if k == target_name
+      params = parameters[target_name].sort
+      # 1
+      if l_flag
+        expand_point1 = (params[0] - limit["expand"])
+        expand_point1 = limit["lower"] if expand_point1 < limit["lower"]
+        new_parameters1[k] = [expand_point1, params[0], params[1]]
+      end
+      #2
+      if u_flag
+        expand_point2 = (params[2] + limit["expand"])
+        expand_point2 = limit["upper"] if expand_point2 > limit["upper"]
+        new_parameters2[k] = [params[1], params[2], expand_point2]
+      end
+    else
+      new_parameters1[k] = v if l_flag
+      new_parameters2[k] = v if u_flag
+    end 
+  }
+  return new_parameters1, new_parameters2
+end
 
 # 
 def main_loop(process_num=4, input_file="./_input.json")
@@ -201,7 +281,6 @@ def main_loop(process_num=4, input_file="./_input.json")
     jobs = parameter_sets.shift(parallel_job_size)
     execute_crowdwalk_parallel(jobs, sample_size, parallel_job_size)  
   end
-
 end
 
 
@@ -231,30 +310,92 @@ def debug_test_rsruby(input_file="./_input.json")
   require 'pry'
 
   init_params = JSON.load(open(input_file,"r"))
+  definitions = init_params["definitions"]
+  constracts = init_params["constractions"]
+  
+  execution_ps_queue = []
+  ini = init_params["parameters"]
+  ini["direction"] = "outside"
+  execution_ps_queue << ini
 
-  doe_search = Doe::DoeSearch.new(init_params["definitions"])
+  doe_search = Doe::DoeSearch.new(definitions)
 
-  parameter_sets = doe_search.create_parameter_set(init_params["parameters"])
-  headers = parameter_sets.map{|k,v| k}
-  parameter_sets = parameter_sets.map{|k,v| v}.transpose
+  already_executed = []
 
-  parameter_sets.each{|ps|
-    set = ps.map{|v| v.to_i}
-    evacuate_area = set[0..6]
-    population = set[7]
-    p "#{evacuate_area} : #{population}"
-  }
+  while execution_ps_queue.count > 0
+    parameters = execution_ps_queue.shift
+    
+    direction = parameters["direction"]
+    parameters.delete("direction")
 
-  debug_result_test(init_params, headers, parameter_sets)
+    already_executed << parameters
+    parameter_sets = doe_search.create_parameter_set(parameters)
+    headers = parameter_sets.map{|k,v| k}
+    parameter_sets = parameter_sets.map{|k,v| v}.transpose
 
+    parameter_sets.each{|ps|
+      set = ps.map{|v| v.to_i}
+      evacuate_area = set[0..6]
+      population = set[7]
+      p "#{evacuate_area} : #{population}"
+    }
+
+    # if doe_aov(init_params, headers, parameter_sets)
+    definitions["targets"].each{|target_name|
+      if doe_aov(target_name, parameters[target_name], headers, parameter_sets)
+        # search dividing point
+        new_param1, new_param2 = create_divide_parameters(target_name, parameters, constracts[target_name])
+        if !new_param1.empty? && !already_executed.include?(new_param1)
+          new_param1["direction"] = "inside"
+          execution_ps_queue.unshift(new_param1)
+        end
+        if !new_param2.empty? && !already_executed.include?(new_param2)
+          new_param2["direction"] = "inside"
+          execution_ps_queue.unshift(new_param2)
+        end
+        # binding.pry # search dividing point
+      elsif direction == "outside"
+        # expand range
+        # test_parameters = test_params
+        # execution_ps_queue << test_parameters
+        new_param1, new_param2 = create_expand_parameters(target_name, parameters,constracts[target_name])
+        if !new_param1.empty? && !already_executed.include?(new_param1)
+          new_param1["direction"] = "outside"
+          execution_ps_queue << new_param1
+        end
+        if !new_param2.empty? && !already_executed.include?(new_param2)
+          new_param2["direction"] = "outside"
+          execution_ps_queue << new_param2
+        end
+        # binding.pry # expand range
+      end
+    }
+
+    binding.pry
+  end
+  jstr = JSON.pretty_generate(already_executed)
+  open("./parameter_sets.json","w"){|io| io.write(jstr)}
   binding.pry
+end
+
+
+#
+def test_params
+  return {"z1"=>[0, 1, 2],
+  "z2"=>[0, 1, 2],
+  "z3"=>[0, 1, 2],
+  "z4"=>[0, 1, 2],
+  "z5"=>[0, 1, 2],
+  "z6"=>[0, 1, 2],
+  "o5"=>[0, 1, 2],
+  "population"=>[1000, 3000, 5000]}
 end
 
 #
 def debug_test_sitevisit
   require 'pry'
 
-  headers, *parameter_sets = CSV.read('./oaTable_18x9.csv') #162 rows
+  headers, *parameter_sets = CSV.read('./oaTable_18x9_2.csv') #162 rows
   execute_crowdwalk_parallel(parameter_sets, 3, 4)
 
   exit(0)
@@ -267,37 +408,6 @@ def debug_test_sitevisit
   populations = [70,500,1000,2000,3000,4000,5000,6000,7000,7500,8000,9000,10000]
   all_patterns = list.product(populations).map{|a| a.flatten }
   execute_crowdwalk_parallel(all_patterns, 3, 4)
-
-end
-
-#
-def debug_result_test(init_params, headers, parameter_sets)
-  require 'pry'
-
-  target_names=init_params["definitions"]["targets"]
-  targets = target_names.map{|name| 
-    [name, init_params["parameters"][name].map{|v| [v,[]] }.to_h]
-  }
-
-  targets = targets.to_h
-
-  parameter_sets.each{|ps|
-    dir = "#{ps[7].to_i}/#{ps[0..6].join("_")}"
-    f_path = dir + "/_output.json"
-    ticks = JSON.load(open(f_path))
-
-    targets[headers[7]][ps[7].to_i] += ticks
-  }
-
-  result = targets[headers[7]].map{|k,v| [k, v.inject(:+)/v.size]}.to_h
-  # 3000 ~ 5000
-  a1 = (result[5000] - result[3000]) / (5000 - 3000)
-  # 5000 ~ 7000
-  a2 = (result[7000] - result[5000]) / (7000 - 5000)
-
-
-  binding.pry
-
 end
 
 
@@ -329,15 +439,20 @@ def test_sum_result
   binding.pry
 end
 
+# target_param = {"name" => [x1, x2, x3]}
+
+
 # 
 if __FILE__ == $0
 
   # debug_test
-  debug_test_rsruby
+  # debug_test_rsruby
 
-  exit(0)
-  # test_sum_result
+  # exit(0)
 
   # for_sitevisit
   debug_test_sitevisit
+
+  # etc., ...
+  # test_sum_result
 end
