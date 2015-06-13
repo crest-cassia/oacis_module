@@ -1,6 +1,7 @@
 require 'rsruby'
 require 'csv'
 require 'json'
+require 'optparse'
 require_relative './rsruby_doe'
 
 
@@ -129,10 +130,10 @@ def do_crowdwalk(dir, properties_file_name="properties.json", seed=0)
   return tick
 end
 
-#
-def simulate_one_parameter_set(population, evacuate_area, sample_size)
+# #:TODO
+def simulate_one_parameter_set(population, evacuate_area, sample_size, out_dir=nil)
   ticks = []
-  out_dir = "./#{population}/#{evacuate_area.join("_")}"
+  out_dir = "./#{population}/#{evacuate_area.join("_")}" if out_dir.nil?
 
   if check_already(out_dir, sample_size)
     ticks = JSON.load(open("#{out_dir}/_output.json"))
@@ -161,33 +162,52 @@ def check_already(out_dir, sample_size)
   end
 end
 
-#
-def execute_crowdwalk_parallel(parameter_sets, sample_size, process_num=4)
-  require 'parallel'  
+# pss: [evacuate_area, population]
+def execute_crowdwalk_parallel(c_headers, t_headers, parameter_sets, sample_size, process_num=4)
+  require 'parallel'
 
+  # parameter_sets.each{|ps|
   Parallel.each(parameter_sets, :in_processes=>process_num){|ps|
-    set = ps.map{|v| v.to_i}
-    evacuate_area = set[0..6]
-    population = set[7]
+    params = extract_crowdwalk_parameter(c_headers, t_headers, ps)
+    evacuate_area = params[0..6]
+    population = params[7]
 
-    # p "#{evacuate_area} : #{population}"
-    average = simulate_one_parameter_set(population, evacuate_area, sample_size)
+    const_id_range = 0..(c_headers.size-1)
+    target_id_range = c_headers.size..(c_headers.size+t_headers.size-1)
+    parent_dir = "#{ps[target_id_range].map{|v| v.to_i }.join("_")}"
+    dir = "#{parent_dir}/#{ps[const_id_range].join("_")}"
+    
+    average = simulate_one_parameter_set(population, evacuate_area, sample_size, dir)
   }
+end
+#
+def extract_crowdwalk_parameter(c_headers, t_headers, parameters)
+  default_params = ["z1", "z2", "z3", "z4", "z5", "z6", "o5", "population"]
+  headers = c_headers+t_headers
+  ids = []
+  default_params.each{|name|
+    ids << headers.index(name)
+  }
+  extract = parameters.select.with_index{|v,i| ids.include?(i) }
+  return extract
 end
 
 #= = = = CrowdWalk = = = =
 
 #= = = = DoE = = = = 
 
-#
-def doe_aov(target_name, target_params, headers, parameter_sets)
+# # TODO: modify parameter_sets
+def doe_aov(target_name, target_params, c_headers, t_headers, parameter_sets)
   target = target_params.map{|v| [v,[]] }.to_h
+  headers = c_headers+t_headers
   target_id = headers.index(target_name)
 
-  
+  const_id_range = 0..(c_headers.size-1)
+  target_id_range = c_headers.size..(headers.size-1)
+
   parameter_sets.each{|ps|
-    # for CrowdWalk_kamakura
-    dir = "#{ps[7].to_i}/#{ps[0..6].join("_")}"
+    parent_dir = "#{ps[target_id_range].map{|v| v.to_i }.join("_")}"
+    dir = "#{parent_dir}/#{ps[const_id_range].join("_")}"
     f_path = dir + "/_output.json"
     ticks = JSON.load(open(f_path))
 
@@ -198,6 +218,18 @@ def doe_aov(target_name, target_params, headers, parameter_sets)
   y1, y2, y3 = target.map{|k, v| v}
 
   return res = Doe::aov(x1, x2, x3, y1, y2, y3)
+end
+
+#
+def cor_plot(param_defs, t_headers, parameter_sets)
+  binding.pry
+  columns = parameter_sets.transpose
+  data_set = []
+  param_defs.each{|k, v|
+
+  }
+  Doe::cor_plot(headers, parameter_sets.transpose)
+  binding.pry
 end
 
 #
@@ -263,24 +295,69 @@ end
 def main_loop(process_num=4, input_file="./_input.json")
   
   # initialize
-  init_params = JSON.load(open(input_file,"r"))
-  doe_search = Doe::DoeSearch.new(init_params["definitions"])
-
-  parameter_sets = doe_search.create_parameter_set(init_params["parameters"])
-  headers = parameter_sets.map{|k,v| k}
-  parameter_sets = parameter_sets.map{|k,v| v}.transpose
-
-  parallel_job_size = 4
   sample_size = 3
-  
 
-  # loop{
-  # 
-  # }
-  while !parameter_sets.empty?
-    jobs = parameter_sets.shift(parallel_job_size)
-    execute_crowdwalk_parallel(jobs, sample_size, parallel_job_size)  
+  init_params = JSON.load(open(input_file,"r"))
+  definitions = init_params["definitions"]
+  constracts = init_params["constractions"]
+  c_headers = init_params["definitions"]["consts"]
+  t_headers = init_params["definitions"]["targets"]
+  execution_ps_queue = []
+  ini = init_params["parameters"]
+  ini["direction"] = "outside"
+  execution_ps_queue << ini
+
+  doe_search = Doe::DoeSearch.new(definitions)
+
+  already_executed = []
+
+  while execution_ps_queue.count > 0
+    parameters = execution_ps_queue.shift
+    
+    direction = parameters["direction"]
+    parameters.delete("direction")
+
+    already_executed << parameters
+    parameter_sets = doe_search.create_parameter_set(parameters)
+    headers = parameter_sets.map{|k,v| k}
+    parameter_sets = parameter_sets.map{|k,v| v}.transpose
+
+
+    # TODO: modify
+    require 'pry'
+    binding.pry
+    execute_crowdwalk_parallel(c_headers, t_headers, parameter_sets, sample_size, process_num)
+    binding.pry
+    definitions["targets"].each{|target_name|
+      # TODO: modify
+      if doe_aov(target_name, parameters[target_name], c_headers, t_headers, parameter_sets)
+        # search dividing point
+        new_param1, new_param2 = create_divide_parameters(target_name, parameters, constracts[target_name])
+        if !new_param1.empty? && !already_executed.include?(new_param1)
+          new_param1["direction"] = "inside"
+          execution_ps_queue.unshift(new_param1)
+        end
+        if !new_param2.empty? && !already_executed.include?(new_param2)
+          new_param2["direction"] = "inside"
+          execution_ps_queue.unshift(new_param2)
+        end
+      elsif direction == "outside"
+        # expand range
+        new_param1, new_param2 = create_expand_parameters(target_name, parameters,constracts[target_name])
+        if !new_param1.empty? && !already_executed.include?(new_param1)
+          new_param1["direction"] = "outside"
+          execution_ps_queue << new_param1
+        end
+        if !new_param2.empty? && !already_executed.include?(new_param2)
+          new_param2["direction"] = "outside"
+          execution_ps_queue << new_param2
+        end
+      end
+    }
   end
+
+  jstr = JSON.pretty_generate(already_executed)
+  open("./parameter_sets.json","w"){|io| io.write(jstr)}
 end
 
 
@@ -312,7 +389,8 @@ def debug_test_rsruby(input_file="./_input.json")
   init_params = JSON.load(open(input_file,"r"))
   definitions = init_params["definitions"]
   constracts = init_params["constractions"]
-  
+  c_headers = init_params["definitions"]["consts"]
+  t_headers = init_params["definitions"]["targets"]
   execution_ps_queue = []
   ini = init_params["parameters"]
   ini["direction"] = "outside"
@@ -330,19 +408,25 @@ def debug_test_rsruby(input_file="./_input.json")
 
     already_executed << parameters
     parameter_sets = doe_search.create_parameter_set(parameters)
-    headers = parameter_sets.map{|k,v| k}
+    headers = parameter_sets.map{|k,v| k}    
     parameter_sets = parameter_sets.map{|k,v| v}.transpose
+
+    # TODO: modify parameter_sets
+    const_id_range = 0..(c_headers.size-1)
+    target_id_range = c_headers.size..(headers.size-1)
 
     parameter_sets.each{|ps|
       set = ps.map{|v| v.to_i}
-      evacuate_area = set[0..6]
-      population = set[7]
+      evacuate_area = set[const_id_range]
+      population = set[target_id_range]
       p "#{evacuate_area} : #{population}"
     }
 
-    # if doe_aov(init_params, headers, parameter_sets)
-    definitions["targets"].each{|target_name|
-      if doe_aov(target_name, parameters[target_name], headers, parameter_sets)
+    # cor.plot
+    cor_plot(parameters, t_headers, parameter_sets)
+
+    t_headers.each{|target_name|
+      if doe_aov(target_name, parameters[target_name], c_headers, t_headers, parameter_sets)
         # search dividing point
         new_param1, new_param2 = create_divide_parameters(target_name, parameters, constracts[target_name])
         if !new_param1.empty? && !already_executed.include?(new_param1)
@@ -440,15 +524,22 @@ def test_sum_result
 end
 
 # target_param = {"name" => [x1, x2, x3]}
-
+# 
+def option_parse(options)
+  @input = options["i"]
+  @num_process = options["p"].to_i
+end
 
 # 
 if __FILE__ == $0
+  options = ARGV.getopts("i:p:")
+  option_parse(options)
+
+  main_loop(@num_process, @input)
 
   # debug_test
-  # debug_test_rsruby
-
-  # exit(0)
+  debug_test_rsruby
+  exit(0)
 
   # for_sitevisit
   debug_test_sitevisit
