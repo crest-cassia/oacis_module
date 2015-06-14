@@ -322,11 +322,9 @@ def main_loop(process_num=4, input_file="./_input.json")
 
     # # TODO: modify
     # require 'pry'
-    # binding.pry
     execute_crowdwalk_parallel(c_headers, t_headers, parameter_sets, sample_size, process_num)
     # binding.pry
     definitions["targets"].each{|target_name|
-      # TODO: modify
       if doe_aov(target_name, parameters[target_name], c_headers, t_headers, parameter_sets)
         # search dividing point
         new_param1, new_param2 = create_divide_parameters(target_name, parameters, constracts[target_name])
@@ -351,6 +349,7 @@ def main_loop(process_num=4, input_file="./_input.json")
         end
       end
     }
+    # binding.pry
   end
 
   jstr = JSON.pretty_generate(already_executed)
@@ -523,7 +522,7 @@ end
 # target_param = {"name" => [x1, x2, x3]}
 # 
 def option_parse(options)
-  @input = options["i"]
+  @input = !options["i"].nil? ? options["i"] : "./_input.json"
   @num_process = options["p"].to_i
 end
 
@@ -536,7 +535,7 @@ if __FILE__ == $0
   exit(0)
 
   # debug_test
-  debug_test_rsruby
+  debug_test_rsruby(@input)
   exit(0)
 
   # for_sitevisit
