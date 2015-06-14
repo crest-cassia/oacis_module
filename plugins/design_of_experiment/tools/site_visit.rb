@@ -2,6 +2,7 @@ require 'rsruby'
 require 'csv'
 require 'json'
 require 'optparse'
+require 'fileutils'
 require_relative './rsruby_doe'
 
 
@@ -323,11 +324,11 @@ def main_loop(process_num=4, input_file="./_input.json")
     parameter_sets = parameter_sets.map{|k,v| v}.transpose
 
 
-    # TODO: modify
-    require 'pry'
-    binding.pry
+    # # TODO: modify
+    # require 'pry'
+    # binding.pry
     execute_crowdwalk_parallel(c_headers, t_headers, parameter_sets, sample_size, process_num)
-    binding.pry
+    # binding.pry
     definitions["targets"].each{|target_name|
       # TODO: modify
       if doe_aov(target_name, parameters[target_name], c_headers, t_headers, parameter_sets)
