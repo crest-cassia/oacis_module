@@ -34,7 +34,8 @@ KAMAKURA_POPULATION_RATIO=
 }
 
 EVACUATION_PLACES=
-[ "NAGHOSHI_CLEAN_CENTER_EXIT", 
+[ 
+  "NAGHOSHI_CLEAN_CENTER_EXIT", 
   "OLD_MUNICIPAL_HOUSING_EXIT",
   "KAMAKURA_Jr_HIGH_EXIT"
 ]
@@ -74,16 +75,11 @@ def create_gen_file(population, evacuate_area, out_dir)
   rows = []
   evacuators.each.with_index{|evac,i|
     EVACUATION_PLACES.each_with_index{|place,j|
-      if evacuate_area[i] == j
+      if evacuate_area[i].to_i == j
         rows << [
           "TIMEEVERY", "#{evac[0]}", "18:00:00", "18:00:00",
           1, 1, "#{evac[1].floor}", "PLAIN", "#{place}"
         ]
-      # else
-      #   rows << [
-      #     "TIMEEVERY", "#{evac[0]}", "18:00:00", "18:00:00",
-      #     1, 1, 0, "PLAIN", "#{place}"
-      #   ]
       end
     }
   }
@@ -537,6 +533,7 @@ if __FILE__ == $0
   option_parse(options)
 
   main_loop(@num_process, @input)
+  exit(0)
 
   # debug_test
   debug_test_rsruby
