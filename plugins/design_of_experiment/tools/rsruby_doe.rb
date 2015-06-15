@@ -216,12 +216,32 @@ def rsruby_test2
   binding.pry
 end
 
+def test_plot_save
 
+  r=RSRuby.instance
+  r.library('psych')
+  r.eval_R("cw<-read.csv(\"out_result.csv\")")
+  r.eval_R("sel<-data.frame(cw[1:7],cw[14],cw[16],cw[18])")
+  r.eval_R("z<-cor(sel)")
+
+  filename="test"
+
+  # r.eval_R("postscript(\"#{filename}.eps\")")
+  r.eval_R("pdf(\"#{filename}.pdf\")")
+  # r.eval_R("jpeg(\"#{filename}.jpg\")")
+
+  r.eval_R("cor.plot(z)")
+
+  r.eval_R("dev.off()")
+  # r.eval_R("")
+
+end
 
 
 if __FILE__ == $0
   require 'pry'
 
-  rsruby_test2
+  # rsruby_test2
+  test_plot_save
 
 end

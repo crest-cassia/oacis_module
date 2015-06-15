@@ -6,7 +6,9 @@ sel<-data.frame(cw[1:7],cw[14],cw[16],cw[18])
 z<-cor(sel)
 
 print(z)
-cor.plot(z, "./plot_test.pdf")
+cor.plot(z)
+
+
 
 # # install.package("corrplot")
 # library(corrplot)
