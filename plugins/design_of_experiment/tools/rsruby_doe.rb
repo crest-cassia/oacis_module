@@ -15,7 +15,7 @@ module Doe
     # 
     def create_parameter_set(set)
       RSRuby.instance.reset_cache
-      # @r = RSRuby.instance
+      @r = RSRuby.instance
       @r.library('DoE.base')
       # set data
       set.each{|k,v| @r.eval_R("#{k}<-c(#{v.join(",")})") }
@@ -88,7 +88,7 @@ module Doe
     end
   end
   #
-  def self.cor_plot(headers, data, num=1)
+  def self.cor_plot(headers, data, str="plot")
       RSRuby.instance.reset_cache
       r = RSRuby.instance
       r.library('psych')
@@ -97,14 +97,11 @@ module Doe
       }
       r.eval_R("data<-data.frame(#{headers.join(",")})")
       r.eval_R("corData<-cor(data)")
-
-      binding.pry
+      r.eval_R("pdf(\"#{str}.pdf\")")
       
       r.eval_R("cor.plot(corData)")
-      system("mv Rplots.pdf Rplots_#{num}.pdf")
-      # sel<-data.frame(cw[1:7],cw[14],cw[16],cw[18])
-      # z<-cor(sel)
-      # cor.plot(z, "./plot_test.pdf")
+      r.eval_R("dev.off()")
+      sleep 1
     end
 end
 
@@ -222,6 +219,7 @@ def test_plot_save
   r.library('psych')
   r.eval_R("cw<-read.csv(\"out_result.csv\")")
   r.eval_R("sel<-data.frame(cw[1:7],cw[14],cw[16],cw[18])")
+  # binding.pry
   r.eval_R("z<-cor(sel)")
 
   filename="test"

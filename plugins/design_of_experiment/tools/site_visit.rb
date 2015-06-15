@@ -218,15 +218,53 @@ def doe_aov(target_name, target_params, c_headers, t_headers, parameter_sets)
 end
 
 #
-def cor_plot(param_defs, t_headers, parameter_sets)
-  binding.pry
-  columns = parameter_sets.transpose
+def cor_plot(param_defs, c_headers, t_headers, parameter_sets, str)
   data_set = []
-  param_defs.each{|k, v|
+  headers = c_headers+t_headers
+  # t_params = param_defs.select{|k,v| t_headers.include?(k)}
+  # t_params.map{|k,v| v.map}
 
+
+  const_id_range = 0..(c_headers.size-1)
+  target_id_range = c_headers.size..(headers.size-1)
+
+
+  sets = parameter_sets.group_by{|row| row[target_id_range] }
+  sets = sets.map{|k,v| [k,v.sort] }.to_h
+  
+  const_set = sets.first[1].map{|ps| ps[const_id_range].map{|v| v.to_i}}
+  data_set = sets.first[1].map{|ps| ps[const_id_range].map{|v| v.to_i}}
+  t_cols = param_defs.select{|k,v| t_headers.include?(k)}
+
+  # t_cols = t_cols.map{|k,v|  v.map{|a| "#{k}_#{a}"} }
+  t_cols = t_cols.map{|k,v|  v.map{|a| {k=>a} } }
+  # binding.pry
+  # t_cols << [{"tokyo"=>10},{"tokyo"=>20},{"tokyo"=>30}]
+  t_cols = t_cols.inject{|sum, n| sum = sum.product(n).map{|v| v.flatten}}
+  # binding.pry 
+  const_set.each.with_index{|const_ps, row_i|
+    t_cols.each{|list|
+      hash = list
+      if list.size > 1
+        hash = list.inject{|sum, n| sum = sum.merge(n) }
+      end
+      ps = const_ps + hash.map{|k,v| v}
+      data_set[row_i] << average_read_output_file(ps, const_id_range, target_id_range)
+    }
+    
   }
-  Doe::cor_plot(headers, parameter_sets.transpose)
-  binding.pry
+
+  h = c_headers+t_cols.map{|h| h.map{|k,v| "#{k}#{v}"}.join("_")}
+  Doe::cor_plot(h, data_set.transpose, str)
+
+end
+# 
+def average_read_output_file(ps, const_id_range, target_id_range)
+  parent_dir = "#{ps[target_id_range].map{|v| v.to_i }.join("_")}"
+  dir = "#{parent_dir}/#{ps[const_id_range].join("_")}"
+  f_path = dir + "/_output.json"
+  ticks = JSON.load(open(f_path))
+  ticks.inject(:+)/ticks.size
 end
 
 #
@@ -242,6 +280,9 @@ def create_divide_parameters(target_name, parameters, limit)
       # 1
       if l_flag
         divide_point1 = (params[0] + params[1]) / 2
+        if params[0]==limit["lower"]
+          divide_point1 = (0 + params[1]) / 2
+        end
         new_parameters1[k] = [params[0], divide_point1, params[1]]
       end
       #2
@@ -307,6 +348,7 @@ def main_loop(process_num=4, input_file="./_input.json")
   doe_search = Doe::DoeSearch.new(definitions)
 
   already_executed = []
+  counter = 0
 
   while execution_ps_queue.count > 0
     parameters = execution_ps_queue.shift
@@ -323,7 +365,24 @@ def main_loop(process_num=4, input_file="./_input.json")
     # # TODO: modify
     # require 'pry'
     execute_crowdwalk_parallel(c_headers, t_headers, parameter_sets, sample_size, process_num)
+    
+    # cor.plot
     # binding.pry
+    str="#{counter}_pop_#{parameters["population"].min}~#{parameters["population"].max}"
+    cor_plot(parameters, c_headers, t_headers, parameter_sets, str)
+
+    all_parameters = {}
+    all_sets = []
+    already_executed.each{|hash|
+      hash.each{|k,v_list|
+        all_parameters[k] ||= []
+        all_parameters[k] += v_list
+        all_parameters[k].sort!.uniq!
+      }
+      all_sets += doe_search.create_parameter_set(parameters).map{|k,v| v}.transpose
+    }
+    cor_plot(all_parameters, c_headers, t_headers, all_sets, "#{counter}_all")
+
     definitions["targets"].each{|target_name|
       if doe_aov(target_name, parameters[target_name], c_headers, t_headers, parameter_sets)
         # search dividing point
@@ -336,7 +395,8 @@ def main_loop(process_num=4, input_file="./_input.json")
           new_param2["direction"] = "inside"
           execution_ps_queue.unshift(new_param2)
         end
-      elsif direction == "outside"
+      end
+      if direction == "outside"
         # expand range
         new_param1, new_param2 = create_expand_parameters(target_name, parameters,constracts[target_name])
         if !new_param1.empty? && !already_executed.include?(new_param1)
@@ -350,6 +410,7 @@ def main_loop(process_num=4, input_file="./_input.json")
       end
     }
     # binding.pry
+    counter += 1
   end
 
   jstr = JSON.pretty_generate(already_executed)
@@ -395,14 +456,15 @@ def debug_test_rsruby(input_file="./_input.json")
   doe_search = Doe::DoeSearch.new(definitions)
 
   already_executed = []
+  counter = 0
 
   while execution_ps_queue.count > 0
     parameters = execution_ps_queue.shift
-    
+    already_executed << parameters
+
     direction = parameters["direction"]
     parameters.delete("direction")
-
-    already_executed << parameters
+    
     parameter_sets = doe_search.create_parameter_set(parameters)
     headers = parameter_sets.map{|k,v| k}    
     parameter_sets = parameter_sets.map{|k,v| v}.transpose
@@ -419,7 +481,21 @@ def debug_test_rsruby(input_file="./_input.json")
     }
 
     # cor.plot
-    cor_plot(parameters, t_headers, parameter_sets)
+    # binding.pry
+    str="#{counter}_pop_#{parameters["population"].min}~#{parameters["population"].max}"
+    cor_plot(parameters, c_headers, t_headers, parameter_sets, str)
+
+    all_parameters = {}
+    all_sets = []
+    already_executed.each{|hash|
+      hash.each{|k,v_list|
+        all_parameters[k] ||= []
+        all_parameters[k] += v_list
+        all_parameters[k].sort!.uniq!
+      }
+      all_sets += doe_search.create_parameter_set(parameters).map{|k,v| v}.transpose
+    }
+    cor_plot(all_parameters, c_headers, t_headers, all_sets, "#{counter}_all")
 
     t_headers.each{|target_name|
       if doe_aov(target_name, parameters[target_name], c_headers, t_headers, parameter_sets)
@@ -434,7 +510,8 @@ def debug_test_rsruby(input_file="./_input.json")
           execution_ps_queue.unshift(new_param2)
         end
         # binding.pry # search dividing point
-      elsif direction == "outside"
+      end
+      if direction == "outside"
         # expand range
         # test_parameters = test_params
         # execution_ps_queue << test_parameters
@@ -451,7 +528,8 @@ def debug_test_rsruby(input_file="./_input.json")
       end
     }
 
-    binding.pry
+    # binding.pry
+    counter += 1
   end
   jstr = JSON.pretty_generate(already_executed)
   open("./parameter_sets.json","w"){|io| io.write(jstr)}
