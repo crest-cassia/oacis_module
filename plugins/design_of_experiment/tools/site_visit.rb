@@ -254,7 +254,9 @@ def cor_plot(param_defs, c_headers, t_headers, parameter_sets, str)
     
   }
 
+  t_cols = t_cols.map{|hl| hl.map{|h| h.to_a.flatten}.to_h }
   h = c_headers+t_cols.map{|h| h.map{|k,v| "#{k}#{v}"}.join("_")}
+
   Doe::cor_plot(h, data_set.transpose, str)
 
 end
