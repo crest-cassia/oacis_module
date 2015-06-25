@@ -77,15 +77,16 @@ module Doe
     # r_aov.eval_R("res<-summary.aov(reslm)")
     r_aov.eval_R("res<-summary.aov(lm(y~x*factor(g), data=data))")
 
-    if r_aov.res["Pr(>F)"][2] < 0.05
-      # r_aov.eval_R("rm(reslm)")
-      # r_aov.eval_R("rm(res)")
-      return true
-    else
-      # r_aov.eval_R("rm(reslm)")
-      # r_aov.eval_R("rm(res)")
-      return false
-    end
+    # if r_aov.res["Pr(>F)"][2] < 0.05
+    #   # r_aov.eval_R("rm(reslm)")
+    #   # r_aov.eval_R("rm(res)")
+    #   return true
+    # else
+    #   # r_aov.eval_R("rm(reslm)")
+    #   # r_aov.eval_R("rm(res)")
+    #   return false
+    # end
+    return r_aov.res
   end
   #
   def self.cor_plot(headers, data, str="plot")

@@ -40,6 +40,8 @@ EVACUATION_PLACES=
   "KAMAKURA_Jr_HIGH_EXIT"
 ]
 
+F_THETA=0.05
+
 #
 def create_crowdwalk_kamakura_file(population, evacuate_area, out_dir="./kamakura_test", seed=0)
 
@@ -193,7 +195,7 @@ end
 
 #= = = = DoE = = = = 
 
-# # TODO: modify parameter_sets
+# 
 def doe_aov(target_name, target_params, c_headers, t_headers, parameter_sets)
   target = target_params.map{|v| [v,[]] }.to_h
   headers = c_headers+t_headers
@@ -213,7 +215,7 @@ def doe_aov(target_name, target_params, c_headers, t_headers, parameter_sets)
 
   x1, x2, x3 = target.map{|k, v| k}
   y1, y2, y3 = target.map{|k, v| v}
-
+  
   return res = Doe::aov(x1, x2, x3, y1, y2, y3)
 end
 
@@ -345,6 +347,7 @@ def main_loop(process_num=4, input_file="./_input.json")
   execution_ps_queue = []
   ini = init_params["parameters"]
   ini["direction"] = "outside"
+  ini["f-value"] = 0.0
   execution_ps_queue << ini
 
   doe_search = Doe::DoeSearch.new(definitions)
@@ -357,15 +360,14 @@ def main_loop(process_num=4, input_file="./_input.json")
     
     direction = parameters["direction"]
     parameters.delete("direction")
+    parameters.delete("f-value")
 
     already_executed << parameters
     parameter_sets = doe_search.create_parameter_set(parameters)
     headers = parameter_sets.map{|k,v| k}
     parameter_sets = parameter_sets.map{|k,v| v}.transpose
 
-
-    # # TODO: modify
-    # require 'pry'
+    # CrowdWalk
     execute_crowdwalk_parallel(c_headers, t_headers, parameter_sets, sample_size, process_num)
     
     # cor.plot
@@ -386,15 +388,19 @@ def main_loop(process_num=4, input_file="./_input.json")
     cor_plot(all_parameters, c_headers, t_headers, all_sets, "#{counter}_all")
 
     definitions["targets"].each{|target_name|
-      if doe_aov(target_name, parameters[target_name], c_headers, t_headers, parameter_sets)
+      aov_res = doe_aov(target_name, parameters[target_name], c_headers, t_headers, parameter_sets)
+      # if doe_aov(target_name, parameters[target_name], c_headers, t_headers, parameter_sets)
+      if aov_res["Pr(>F)"][2] < F_THETA
         # search dividing point
         new_param1, new_param2 = create_divide_parameters(target_name, parameters, constracts[target_name])
         if !new_param1.empty? && !already_executed.include?(new_param1)
           new_param1["direction"] = "inside"
+          new_param1["f-value"] = aov_res["F value"][2]
           execution_ps_queue.unshift(new_param1)
         end
         if !new_param2.empty? && !already_executed.include?(new_param2)
           new_param2["direction"] = "inside"
+          new_param2["f-value"] = aov_res["F value"][2]
           execution_ps_queue.unshift(new_param2)
         end
       end
@@ -403,15 +409,18 @@ def main_loop(process_num=4, input_file="./_input.json")
         new_param1, new_param2 = create_expand_parameters(target_name, parameters,constracts[target_name])
         if !new_param1.empty? && !already_executed.include?(new_param1)
           new_param1["direction"] = "outside"
+          new_param1["f-value"] = aov_res["F value"][2]
           execution_ps_queue << new_param1
         end
         if !new_param2.empty? && !already_executed.include?(new_param2)
           new_param2["direction"] = "outside"
+          new_param2["f-value"] = aov_res["F value"][2]
           execution_ps_queue << new_param2
         end
       end
     }
-    # binding.pry
+
+    execution_ps_queue.sort_by!{|ps| -ps["f-value"] }
     counter += 1
   end
 
@@ -515,8 +524,6 @@ def debug_test_rsruby(input_file="./_input.json")
       end
       if direction == "outside"
         # expand range
-        # test_parameters = test_params
-        # execution_ps_queue << test_parameters
         new_param1, new_param2 = create_expand_parameters(target_name, parameters,constracts[target_name])
         if !new_param1.empty? && !already_executed.include?(new_param1)
           new_param1["direction"] = "outside"
