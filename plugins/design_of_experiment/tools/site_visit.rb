@@ -559,22 +559,24 @@ def test_params
 end
 
 #
-def debug_test_sitevisit
+def debug_test_sitevisit(num_process=4)
   require 'pry'
 
-  headers, *parameter_sets = CSV.read('./oaTable_18x9_2.csv') #162 rows
-  execute_crowdwalk_parallel(parameter_sets, 3, 4)
+  # headers, *parameter_sets = CSV.read('./oaTable_18x9_2.csv') #162 rows
+  # execute_crowdwalk_parallel(parameter_sets, 3, 4)
 
-  exit(0)
+  # exit(0)
 
   # = = = all pattern = = = 
+  c_headers, t_headers = ["z1","z2","z3","z4","z5","z6","o5"], ["population"]
   base = [0,1,2]
   list = base.product(base).map{|a| a.flatten}
   5.times{list = list.product(base).map{|a| a.flatten}}
 
-  populations = [70,500,1000,2000,3000,4000,5000,6000,7000,7500,8000,9000,10000]
+  populations = [70, 500, 1000, 1500, 2000, 2500, 3000, 5000, 7000, 9000, 10000]
   all_patterns = list.product(populations).map{|a| a.flatten }
-  execute_crowdwalk_parallel(all_patterns, 3, 4)
+binding.pry  
+  execute_crowdwalk_parallel(c_headers, t_headers, all_patterns, 3, num_process)
 end
 
 
@@ -610,13 +612,16 @@ end
 # 
 def option_parse(options)
   @input = !options["i"].nil? ? options["i"] : "./_input.json"
-  @num_process = options["p"].to_i
+  @num_process = options["p"].nil? ? 1 : options["p"].to_i
 end
 
 # 
 if __FILE__ == $0
   options = ARGV.getopts("i:p:")
   option_parse(options)
+
+  debug_test_sitevisit(@num_process)
+  exit(0)
 
   main_loop(@num_process, @input)
   exit(0)
