@@ -483,7 +483,7 @@ def debug_test_rsruby(input_file="./_input.json")
     # TODO: modify parameter_sets
     const_id_range = 0..(c_headers.size-1)
     target_id_range = c_headers.size..(headers.size-1)
-
+binding.pry
     parameter_sets.each{|ps|
       set = ps.map{|v| v.to_i}
       evacuate_area = set[const_id_range]
@@ -573,7 +573,7 @@ def debug_test_sitevisit(num_process=4)
   list = base.product(base).map{|a| a.flatten}
   5.times{list = list.product(base).map{|a| a.flatten}}
 
-  populations = [70, 500, 1000, 1500, 2000, 2500, 3000, 5000, 7000, 9000, 10000]
+  populations = [70, 500, 1000, 1500, 2000, 2500, 3000, 4000, 5000, 7000, 9000, 10000]
   all_patterns = list.product(populations).map{|a| a.flatten }
 binding.pry  
   execute_crowdwalk_parallel(c_headers, t_headers, all_patterns, 3, num_process)
@@ -608,6 +608,30 @@ def test_sum_result
   binding.pry
 end
 
+
+def debug_test_corplot(input_file="./_input.json")
+  require 'pry'
+
+  init_params = JSON.load(open(input_file,"r"))
+  param_defs = init_params["parameters"]
+  constracts = init_params["constractions"]
+  c_headers = init_params["definitions"]["consts"]
+  t_headers = init_params["definitions"]["targets"]
+
+  base = [0,1,2]
+  list = base.product(base).map{|a| a.flatten}
+  5.times{list = list.product(base).map{|a| a.flatten}}
+
+  populations = [70, 500, 1000, 1500, 2000, 2500, 3000, 4000, 5000, 7000, 9000, 10000]
+  all_patterns = list.product(populations).map{|a| a.flatten }
+
+  param_defs["population"] = populations 
+  
+  str = "all"
+  cor_plot(param_defs, c_headers, t_headers, all_patterns, str)
+  exit(0)
+end
+
 # target_param = {"name" => [x1, x2, x3]}
 # 
 def option_parse(options)
@@ -627,6 +651,7 @@ if __FILE__ == $0
   exit(0)
 
   # debug_test
+  debug_test_corplot
   debug_test_rsruby(@input)
   exit(0)
 
