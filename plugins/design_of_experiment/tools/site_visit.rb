@@ -138,8 +138,8 @@ def simulate_one_parameter_set(population, evacuate_area, sample_size, out_dir=n
     ticks = JSON.load(open("#{out_dir}/_output.json"))
   else
     start_seed = 0
-    if File.exist?(result_file) 
-      ticks = JSON.load(open(result_file))
+    if File.exist?("#{out_dir}/_output.json") 
+      ticks = JSON.load(open("#{out_dir}/_output.json"))
       start_seed = ticks.size
     end
 
@@ -440,6 +440,7 @@ end
 
 # For All Pattern Execution
 def do_all_pattern(num_process=4)
+  sample_size = 3
   # = = = all pattern = = = 
   c_headers, t_headers = ["z1","z2","z3","z4","z5","z6","o5"], ["population"]
   base = [0,1,2]
@@ -449,7 +450,7 @@ def do_all_pattern(num_process=4)
   populations = [70, 500, 1000, 1500, 2000, 2500, 3000, 4000, 5000, 7000, 9000, 10000]
   all_patterns = list.product(populations).map{|a| a.flatten }
 
-  execute_crowdwalk_parallel(c_headers, t_headers, all_patterns, 3, num_process)
+  execute_crowdwalk_parallel(c_headers, t_headers, all_patterns, sample_size, num_process)
 end
 
 ### ===begin analyze 
