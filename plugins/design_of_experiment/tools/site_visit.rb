@@ -8,10 +8,10 @@ require_relative './rsruby_doe'
 
 #= = = = CrowdWalk = = = =
 
-KAMAKURA_DIR_PATH="#{ENV["HOME"]}/Desktop/kamakura_sitevisit_demo"
+KAMAKURA_DIR_PATH="#{ENV["HOME"]}/Desktop/kamakura_data"
 
 CROWDWALK_PROGRAM_PATH="#{ENV["CROWDWALK"]}"
-MAP_PATH="#{KAMAKURA_DIR_PATH}/map_narrow.xml"
+MAP_PATH="#{KAMAKURA_DIR_PATH}/map_wide.xml"
 SCENARIO_PATH="#{KAMAKURA_DIR_PATH}/scenario.csv"
 
 KAMAKURA_BASIC_POPULATION=
@@ -37,7 +37,7 @@ EVACUATION_PLACES=
 [ 
   "NAGHOSHI_CLEAN_CENTER_EXIT", 
   "OLD_MUNICIPAL_HOUSING_EXIT",
-  "KAMAKURA_Jr_HIGH_EXIT"
+  "KAMAKURA_JR_HIGH_EXIT" #"KAMAKURA_Jr_HIGH_EXIT"
 ]
 
 F_THETA=0.05
@@ -137,10 +137,18 @@ def simulate_one_parameter_set(population, evacuate_area, sample_size, out_dir=n
   if check_already(out_dir, sample_size)
     ticks = JSON.load(open("#{out_dir}/_output.json"))
   else
+    start_seed = 0
+    if File.exist?(result_file) 
+      ticks = JSON.load(open(result_file))
+      start_seed = ticks.size
+    end
+
     sample_size.times.each{|seed|
-    create_crowdwalk_kamakura_file(population, evacuate_area, out_dir, seed)
-    ticks << do_crowdwalk("#{out_dir}", "properties_#{seed}.json")
-  }
+      if !File.exist?("#{out_dir}/properties_#{seed}.json")
+        create_crowdwalk_kamakura_file(population, evacuate_area, out_dir, seed)
+        ticks << do_crowdwalk("#{out_dir}", "properties_#{seed}.json")
+      end
+    }
     open("#{out_dir}/_output.json", "w"){|io| io.write(ticks.to_s)}
   end
   
@@ -149,7 +157,8 @@ end
 #
 def check_already(out_dir, sample_size)
   result_file = "#{out_dir}/_output.json"
-  if File.exist?(result_file)
+  properties_files = Dir.glob("#{out_dir}/properties_*.json")
+  if File.exist?(result_file) && properties_files.size >= sample_size
     res = JSON.load(open(result_file))
     if res.nil? || res.empty? || res.size < sample_size
       return false
@@ -429,6 +438,161 @@ def main_loop(process_num=4, input_file="./_input.json")
 end
 
 
+# For All Pattern Execution
+def do_all_pattern(num_process=4)
+  # = = = all pattern = = = 
+  c_headers, t_headers = ["z1","z2","z3","z4","z5","z6","o5"], ["population"]
+  base = [0,1,2]
+  list = base.product(base).map{|a| a.flatten}
+  5.times{list = list.product(base).map{|a| a.flatten}}
+
+  populations = [70, 500, 1000, 1500, 2000, 2500, 3000, 4000, 5000, 7000, 9000, 10000]
+  all_patterns = list.product(populations).map{|a| a.flatten }
+
+  execute_crowdwalk_parallel(c_headers, t_headers, all_patterns, 3, num_process)
+end
+
+### ===begin analyze 
+
+# 
+def sum_average_result(path=nil)
+  require 'pry'
+
+  return false if path.nil?
+  # files = Dir.glob("/media/547E-838B/sitevisit/*/*/_output.json")
+  files = Dir.glob(path)
+
+  out_result = {}
+
+  files.each{|f|
+
+    res = JSON.load(open(f))
+    average = res.inject(:+)/res.size
+    paths = f.split("/")
+    oa_str = paths.select{|str| str.include?("_")&&str!="_output.json" }[0]
+    pop_str = paths[paths.index(oa_str)-1]
+    out_result[oa_str] ||= {}
+    out_result[oa_str][pop_str] = average
+    
+  }
+
+  
+  CSV.open("out_average.csv", "w"){|row|
+    out_result.each{|oa_str, hash|
+      oa = oa_str.split("_")
+      arr = hash.sort_by{|k,v| k.to_i}
+      aves = arr.map{|a| a[1]}
+      row << oa + aves
+    }
+  }
+end
+
+#
+def sum_low_result(path=nil)
+  require 'pry'
+
+  return false if path.nil?
+  # files = Dir.glob("/media/547E-838B/sitevisit/*/*/_output.json")
+  files = Dir.glob(path)
+
+  # out_result = {}
+  out_result = []
+
+  files.each{|f|
+
+    res = JSON.load(open(f))
+    # average = res.inject(:+)/res.size
+    paths = f.split("/")
+    oa_str = paths.select{|str| str.include?("_")&&str!="_output.json" }[0]
+    pop_str = paths[paths.index(oa_str)-1]
+    oa = oa_str.split("_")
+    res.each{|val|
+      out_result << oa+[pop_str,val]
+    } 
+  }
+  
+  CSV.open("out_all.csv", "w"){|row|
+    out_result.each{|str|
+      row << str
+    }
+  }
+end
+
+
+#
+def for_correlation_of_disc_val(file)
+  require 'pry'
+  headers, *parameter_sets = CSV.read(file)
+  
+  new_headers = [
+                  "z1:a", "z1:b", "z1:c",
+                  "z2:a", "z2:b", "z2:c",
+                  "z3:a", "z3:b", "z3:c",
+                  "z4:a", "z4:b", "z4:c",
+                  "z5:a", "z5:b", "z5:c",
+                  "z6:a", "z6:b", "z6:c",
+                  "o5:a", "o5:b", "o5:c",
+                  "pop", "evac_time"
+                ]
+  new_parameter_sets = []
+
+  parameter_sets.each{|set|
+    new_set = []
+    set.each.with_index{|v, i|
+      if i < 7
+        case
+        when v == "0" then
+          new_set += [1, 0, 0]
+        when v == "1" then
+          new_set += [0, 1, 0]
+        when v == "2" then
+          new_set += [0, 0, 1]
+        else
+          raise "Error: not support number"
+        end
+      else
+        new_set << v
+      end
+    }    
+    new_parameter_sets << new_set
+  }
+
+  binding.pry
+  CSV.open("./disc_val_out_all.csv","w"){|row|
+    row << new_headers
+    new_parameter_sets.each{|set|
+      row << set
+    }
+  }
+end
+
+#
+def debug_test_corplot(input_file="./_input.json")
+  require 'pry'
+
+  init_params = JSON.load(open(input_file,"r"))
+  param_defs = init_params["parameters"]
+  constracts = init_params["constractions"]
+  c_headers = init_params["definitions"]["consts"]
+  t_headers = init_params["definitions"]["targets"]
+
+  base = [0,1,2]
+  list = base.product(base).map{|a| a.flatten}
+  5.times{list = list.product(base).map{|a| a.flatten}}
+
+  populations = [70, 500, 1000, 1500, 2000, 2500, 3000, 4000, 5000, 7000, 9000, 10000]
+  all_patterns = list.product(populations).map{|a| a.flatten }
+
+  param_defs["population"] = populations 
+  
+  str = "all"
+  cor_plot(param_defs, c_headers, t_headers, all_patterns, str)
+  exit(0)
+end
+
+### ===end analyze
+
+### === Debug Test ....
 
 #
 def debug_test
@@ -483,7 +647,9 @@ def debug_test_rsruby(input_file="./_input.json")
     # TODO: modify parameter_sets
     const_id_range = 0..(c_headers.size-1)
     target_id_range = c_headers.size..(headers.size-1)
-binding.pry
+    
+    # binding.pry
+
     parameter_sets.each{|ps|
       set = ps.map{|v| v.to_i}
       evacuate_area = set[const_id_range]
@@ -545,7 +711,6 @@ binding.pry
   binding.pry
 end
 
-
 #
 def test_params
   return {"z1"=>[0, 1, 2],
@@ -562,75 +727,10 @@ end
 def debug_test_sitevisit(num_process=4)
   require 'pry'
 
-  # headers, *parameter_sets = CSV.read('./oaTable_18x9_2.csv') #162 rows
-  # execute_crowdwalk_parallel(parameter_sets, 3, 4)
-
-  # exit(0)
-
-  # = = = all pattern = = = 
-  c_headers, t_headers = ["z1","z2","z3","z4","z5","z6","o5"], ["population"]
-  base = [0,1,2]
-  list = base.product(base).map{|a| a.flatten}
-  5.times{list = list.product(base).map{|a| a.flatten}}
-
-  populations = [70, 500, 1000, 1500, 2000, 2500, 3000, 4000, 5000, 7000, 9000, 10000]
-  all_patterns = list.product(populations).map{|a| a.flatten }
-binding.pry  
-  execute_crowdwalk_parallel(c_headers, t_headers, all_patterns, 3, num_process)
+  headers, *parameter_sets = CSV.read('./oaTable_18x9_2.csv') #162 rows
+  execute_crowdwalk_parallel(parameter_sets, 3, 4)
 end
 
-
-def test_sum_result
-  require 'pry'
-
-  # files = Dir.glob("/media/547E-838B/sitevisit/*/*/_output.json")
-  out_result = {}
-
-  files.each{|f|
-    res = JSON.load(open(f))
-    average = res.inject(:+)/res.size
-
-    paths = f.split("/")
-    out_result[paths[5]] ||= {}
-    out_result[paths[5]][paths[4]] = average
-    
-  }
-
-  
-  CSV.open("out_result.csv", "w"){|row|
-    out_result.each{|oa_str, hash|
-      oa = oa_str.split("_")
-      arr = hash.sort_by{|k,v| k.to_i}
-      aves = arr.map{|a| a[1]}
-      row << oa + aves
-    }
-  }
-  binding.pry
-end
-
-
-def debug_test_corplot(input_file="./_input.json")
-  require 'pry'
-
-  init_params = JSON.load(open(input_file,"r"))
-  param_defs = init_params["parameters"]
-  constracts = init_params["constractions"]
-  c_headers = init_params["definitions"]["consts"]
-  t_headers = init_params["definitions"]["targets"]
-
-  base = [0,1,2]
-  list = base.product(base).map{|a| a.flatten}
-  5.times{list = list.product(base).map{|a| a.flatten}}
-
-  populations = [70, 500, 1000, 1500, 2000, 2500, 3000, 4000, 5000, 7000, 9000, 10000]
-  all_patterns = list.product(populations).map{|a| a.flatten }
-
-  param_defs["population"] = populations 
-  
-  str = "all"
-  cor_plot(param_defs, c_headers, t_headers, all_patterns, str)
-  exit(0)
-end
 
 # target_param = {"name" => [x1, x2, x3]}
 # 
@@ -644,10 +744,13 @@ if __FILE__ == $0
   options = ARGV.getopts("i:p:")
   option_parse(options)
 
-  debug_test_sitevisit(@num_process)
-  exit(0)
+  # do_all_pattern(@num_process)
+  # exit(0)
 
-  main_loop(@num_process, @input)
+  # main_loop(@num_process, @input)
+  # debug_test_corplot
+  # sum_low_result("./*/*/_output.json")
+  for_correlation_of_disc_val("./out_all.csv")
   exit(0)
 
   # debug_test
